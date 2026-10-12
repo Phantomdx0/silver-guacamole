@@ -1,0 +1,3274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Decision Impact</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #475569;
+    --faint: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --soft: rgba(255, 255, 255, 0.45);
+    --accent: #4f46e5;
+    --amber: #d97706;
+    --orange: #ea580c;
+    --red: #dc2626;
+    --ok: #15803d;
+    --radius: 22px;
+    --glass-fill: linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.22));
+    --glass-border: rgba(255, 255, 255, 0.65);
+    --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    --cat-zoom: 1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    padding-bottom: 110px;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(129, 140, 248, 0.45), transparent 42%),
+      radial-gradient(circle at 88% 18%, rgba(244, 114, 182, 0.35), transparent 40%),
+      radial-gradient(circle at 50% 95%, rgba(56, 189, 248, 0.35), transparent 45%),
+      linear-gradient(160deg, #eef2ff 0%, #f5f3ff 50%, #ecfeff 100%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select { font: inherit; }
+
+  /* Top bar */
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.08);
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .top h1 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+  .top p { margin: 2px 0 0; font-size: 0.78rem; color: var(--muted); }
+  .top-actions { display: flex; align-items: center; gap: 8px; }
+
+  /* Buttons */
+  button {
+    cursor: pointer;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--ink);
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(31, 38, 135, 0.06), inset 0 1px 0 rgba(255,255,255,0.8);
+    transition: transform 0.12s, box-shadow 0.2s;
+  }
+  button:active { transform: scale(0.98); }
+  button.primary {
+    width: 100%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  button.small { padding: 7px 12px; font-size: 0.8rem; width: auto; }
+  button.danger { color: var(--red); }
+  .avatar {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #ec4899);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+  }
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.55);
+  }
+  .icon-btn svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Layout */
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 16px;
+    display: grid;
+    gap: 16px;
+  }
+  @media (min-width: 900px) {
+    .view[data-view="home"].on, .view[data-view="calendar"].on { grid-template-columns: 1.4fr 1fr; align-items: start; }
+  }
+  .panel {
+    background: var(--glass-fill);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--glass-shadow);
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .panel h2 {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin: 12px 0 4px;
+  }
+  select, input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--ink);
+    font-size: 0.95rem;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  input:focus, select:focus { outline: 2px solid rgba(99, 102, 241, 0.35); outline-offset: 0; }
+  .row-btns { display: grid; gap: 8px; margin-top: 16px; }
+  .hint { color: var(--muted); font-size: 0.78rem; margin: 10px 0 0; }
+  .empty { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+  /* Segmented control */
+  .seg {
+    display: inline-flex;
+    background: rgba(15, 23, 42, 0.06);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .seg button {
+    border: none;
+    background: transparent;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+  .seg button.on {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+  }
+
+  /* Calendar */
+  .cal {
+    --h: 52px;
+    display: grid;
+    grid-template-columns: 34px repeat(5, 1fr);
+    font-size: 0.72rem;
+  }
+  .cal.shake { animation: stageShake 0.5s; }
+  .cal .dh {
+    text-align: center;
+    color: var(--muted);
+    padding: 2px 0 8px;
+    font-weight: 500;
+  }
+  .cal .dh b { display: block; color: var(--ink); font-size: 0.88rem; font-weight: 600; }
+  .gutter,
+  .col {
+    position: relative;
+    background: repeating-linear-gradient(to bottom, rgba(15, 23, 42, 0.07) 0 1px, transparent 1px var(--h));
+  }
+  .col { border-left: 1px solid rgba(15, 23, 42, 0.06); }
+  .gutter span {
+    position: absolute;
+    right: 6px;
+    color: var(--faint);
+    font-size: 0.64rem;
+    transform: translateY(-1px);
+  }
+  .block {
+    position: absolute;
+    border-radius: 12px;
+    padding: 4px 6px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--c) 20%, rgba(255, 255, 255, 0.7));
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-left: 3px solid var(--c);
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255,255,255,0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    cursor: pointer;
+    line-height: 1.25;
+    transition: transform 0.12s;
+  }
+  .block:active { transform: scale(0.98); }
+  .block b {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  .block small {
+    display: block;
+    color: var(--muted);
+    font-size: 0.62rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .block.mine { box-shadow: inset 0 0 0 1px var(--c), 0 3px 10px rgba(15, 23, 42, 0.08); }
+  .block.changed { outline: 2px solid var(--ink); outline-offset: -1px; }
+  .block.i1 { outline: 2px solid var(--amber); outline-offset: -1px; }
+  .block.i2 { outline: 2px dashed var(--orange); outline-offset: -1px; }
+  .block.i3 { outline: 2px solid var(--red); outline-offset: -1px; }
+
+  #valueFields:empty { display: none; }
+
+  /* Results */
+  .summary {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 16px;
+    padding: 12px;
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+  }
+  .summary div { color: var(--muted); font-size: 0.84rem; margin-top: 4px; }
+  .lvl { margin-bottom: 12px; }
+  .lvl h3 {
+    margin: 0 0 6px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .imp {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-left: 3px solid var(--amber);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 0.88rem;
+  }
+  .imp.l2 { border-left-color: var(--orange); }
+  .imp.l3 { border-left-color: var(--red); }
+  .imp .via { color: var(--faint); font-size: 0.74rem; margin-left: 4px; }
+  .imp .why { color: var(--muted); font-size: 0.8rem; margin-top: 4px; }
+  .fix {
+    background: rgba(220, 252, 231, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 16px;
+    padding: 12px;
+    margin-top: 12px;
+    font-size: 0.88rem;
+  }
+  .fix h3 {
+    margin: 0 0 6px;
+    font-size: 0.7rem;
+    color: var(--ok);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .fix div + div { margin-top: 6px; }
+  .fix .btns { margin-top: 10px; }
+
+  /* Chat */
+  .chat-log {
+    max-height: 260px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .chat-log:empty { display: none; }
+  .msg {
+    max-width: 88%;
+    padding: 8px 12px;
+    border-radius: 16px;
+    font-size: 0.88rem;
+    white-space: pre-line;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  }
+  .msg.mochi {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .msg .who { display: block; font-size: 0.66rem; opacity: 0.65; margin-bottom: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip {
+    padding: 5px 11px;
+    font-size: 0.76rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: none;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .chat-input { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .chat-input button { width: auto; padding: 10px 16px; }
+
+  /* Sheets (profile and settings) */
+  .sheet-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.22);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 60;
+  }
+  .sheet-bg.open { display: flex; }
+  .sheet {
+    background: linear-gradient(160deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6));
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    width: 100%;
+    max-width: 480px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 26px 26px 0 0;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 -8px 40px rgba(31, 38, 135, 0.15);
+  }
+  @media (min-width: 600px) {
+    .sheet-bg { align-items: center; }
+    .sheet { border-radius: 26px; }
+  }
+  .sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .sheet-head h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+  .profile-head { display: flex; align-items: center; gap: 12px; }
+  .profile-head .avatar { width: 52px; height: 52px; font-size: 1.05rem; }
+  .profile-head strong { font-size: 1rem; display: block; }
+  .profile-head span { color: var(--muted); font-size: 0.82rem; }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 16px 0 4px;
+  }
+  .stat {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 14px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stat b { display: block; font-size: 1.05rem; }
+  .stat span { font-size: 0.7rem; color: var(--muted); }
+
+  .set-group { border-top: 1px solid rgba(15, 23, 42, 0.07); padding: 14px 0 6px; }
+  .set-group h3 {
+    margin: 0 0 6px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .set-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    font-size: 0.92rem;
+  }
+  .set-row select { width: auto; padding: 7px 10px; font-size: 0.88rem; margin: 0; }
+  .switch { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; margin: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; margin: 0; padding: 0; position: absolute; border: none; }
+  .switch span {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.15);
+    border-radius: 999px;
+    transition: background 0.2s;
+  }
+  .switch span::before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+  }
+  .switch input:checked + span { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+  .switch input:checked + span::before { transform: translateX(18px); }
+
+  /* Roaming Mochi layer: covers the whole screen, only Mochi takes taps */
+  #roam {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    overflow: hidden;
+  }
+  @keyframes stageShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(3px); }
+  }
+  #catMover {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    pointer-events: auto;
+    will-change: transform;
+  }
+  #cat {
+    zoom: var(--cat-zoom);
+    cursor: grab;
+    touch-action: none;
+    filter: drop-shadow(0 4px 5px rgba(17, 24, 39, 0.18));
+    transform-origin: center bottom;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #cat:active { cursor: grabbing; }
+  #catBubble {
+    position: absolute;
+    bottom: 100%;
+    margin-bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 14px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    color: var(--ink);
+    opacity: 0;
+    transition: opacity 0.25s;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 2;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Login gate */
+  .gate {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(238, 242, 255, 0.55);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    overflow-y: auto;
+  }
+  .gate-card {
+    width: 100%;
+    max-width: 380px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.85), rgba(255,255,255,0.55));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255,255,255,0.85);
+    border-radius: 26px;
+    padding: 22px;
+    box-shadow: 0 20px 60px rgba(31, 38, 135, 0.18);
+  }
+  .gate-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .gate-brand { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .gate-title { margin: 6px 0 4px; font-size: 1.35rem; font-weight: 600; }
+  .gate-sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 14px; }
+  .mode-card { display: block; width: 100%; text-align: left; margin-bottom: 10px; padding: 16px; border-radius: 18px; }
+  .mode-card b { display: block; font-size: 1rem; }
+  .mode-card span { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+  .gate-tabs { display: flex; width: 100%; margin-top: 4px; }
+  .gate-tabs button { flex: 1; }
+  .gate-err { color: var(--red); font-size: 0.82rem; min-height: 1.3em; margin: 10px 0 0; }
+  .gate-foot { color: var(--muted); font-size: 0.84rem; text-align: center; margin: 12px 0 0; }
+  button.link {
+    border: none;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 0;
+    color: #4f46e5;
+    font-weight: 600;
+    text-decoration: underline;
+    width: auto;
+  }
+
+  /* Business panels */
+  .biz-only { display: none; }
+  body.business .biz-only { display: block; }
+  .team-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .team-name { font-size: 0.86rem; font-weight: 600; }
+  .team-name i {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--c); margin-right: 6px;
+  }
+  .team-name small { display: block; color: var(--muted); font-weight: 400; font-size: 0.7rem; }
+  .team-days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .tday {
+    position: relative; height: 52px; border-radius: 10px; overflow: hidden;
+    background: rgba(15, 23, 42, 0.06);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .tday span {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, #818cf8, #6366f1); opacity: 0.85;
+  }
+  .tday.over span { background: linear-gradient(180deg, #f87171, #dc2626); }
+  .tday b { position: relative; font-size: 0.66rem; color: var(--ink); margin-bottom: 3px; }
+  .team-note { color: var(--muted); font-size: 0.8rem; margin: 4px 0 0; }
+  .act { padding: 8px 0; border-bottom: 1px solid rgba(15, 23, 42, 0.07); }
+  .act b { display: block; font-weight: 500; font-size: 0.86rem; }
+  .act small { color: var(--muted); font-size: 0.74rem; }
+  .btns2 { display: flex; gap: 8px; margin-top: 8px; }
+  .btns2 button { flex: 1; }
+
+  @media print {
+    .top, .gate, #roam, .chat-input, .chips, .sheet-bg, button, .hint { display: none !important; }
+    body { background: #fff; padding: 0; }
+    .wrap { display: block; max-width: none; }
+    .panel { background: #fff; border: 1px solid #ccc; box-shadow: none; backdrop-filter: none; margin-bottom: 12px; break-inside: avoid; }
+    .block { box-shadow: none; }
+  }
+
+  .muted { color: var(--muted); }
+  .person-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .person-row .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .person-row .pname { flex: 1; font-weight: 500; }
+  .person-row .pname small { display: block; color: var(--muted); font-weight: 400; font-size: 0.76rem; }
+
+  /* Dark mode */
+  body.dark {
+    --ink: #e5e7eb;
+    --muted: #94a3b8;
+    --faint: #64748b;
+    --line: rgba(255, 255, 255, 0.08);
+    --soft: rgba(255, 255, 255, 0.06);
+    --glass-fill: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 12% 8%, rgba(79, 70, 229, 0.35), transparent 42%),
+      radial-gradient(circle at 88% 18%, rgba(190, 24, 93, 0.25), transparent 40%),
+      radial-gradient(circle at 50% 95%, rgba(14, 116, 144, 0.3), transparent 45%),
+      linear-gradient(160deg, #0b1020, #111827 60%, #0f172a);
+    background-attachment: fixed;
+  }
+  body.dark .top {
+    background: rgba(15, 23, 42, 0.45);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  body.dark button {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--ink);
+    box-shadow: none;
+  }
+  body.dark button.primary { color: #fff; }
+  body.dark button.link { color: #a5b4fc; background: none; border: none; }
+  body.dark button.danger { color: #fca5a5; }
+  body.dark .icon-btn { background: rgba(255, 255, 255, 0.08); }
+  body.dark .icon-btn svg { stroke: var(--ink); }
+  body.dark .avatar { border-color: rgba(255,255,255,0.15); }
+  body.dark select, body.dark input {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--ink);
+    box-shadow: none;
+  }
+  body.dark .seg { background: rgba(255, 255, 255, 0.06); }
+  body.dark .seg button.on { background: rgba(255, 255, 255, 0.14); color: var(--ink); }
+  body.dark .gutter, body.dark .col {
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.07) 0 1px, transparent 1px var(--h));
+  }
+  body.dark .col { border-left-color: rgba(255, 255, 255, 0.06); }
+  body.dark .block {
+    background: color-mix(in srgb, var(--c) 28%, rgba(15, 23, 42, 0.7));
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  }
+  body.dark .block small { color: #cbd5e1; }
+  body.dark .summary, body.dark .imp, body.dark .stat, body.dark .chip,
+  body.dark .msg.mochi, body.dark .act-card {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--ink);
+  }
+  body.dark .fix { background: rgba(22, 101, 52, 0.25); border-color: rgba(255,255,255,0.1); }
+  body.dark .fix h3 { color: #86efac; }
+  body.dark .sheet {
+    background: linear-gradient(160deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.9));
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--ink);
+  }
+  body.dark .sheet-bg { background: rgba(0, 0, 0, 0.45); }
+  body.dark .gate { background: rgba(2, 6, 23, 0.6); }
+  body.dark .gate-card {
+    background: linear-gradient(160deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.88));
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--ink);
+  }
+  body.dark .gate-err { color: #fca5a5; }
+  body.dark .tday { background: rgba(255, 255, 255, 0.07); }
+  body.dark .tday b { color: var(--ink); }
+  body.dark .switch span { background: rgba(255, 255, 255, 0.2); }
+  body.dark .set-group { border-top-color: rgba(255, 255, 255, 0.08); }
+  body.dark .act, body.dark .person-row { border-bottom-color: rgba(255, 255, 255, 0.07); }
+  body.dark #catBubble { background: rgba(15, 23, 42, 0.85); color: var(--ink); border-color: rgba(255,255,255,0.12); }
+  body.dark .msg.user { color: #fff; }
+
+  /* Tabs */
+  .view { display: none; gap: 16px; max-width: 1100px; margin: 0 auto; }
+  .view.on { display: grid; }
+  .tabbar {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 45;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(20px) saturate(170%);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    border-top: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 -8px 30px rgba(31, 38, 135, 0.10);
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: auto;
+    background: none;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 6px 2px;
+    border-radius: 14px;
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 500;
+  }
+  .tab svg {
+    width: 22px; height: 22px;
+    stroke: currentColor; fill: none;
+    stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .tab.on { color: #4f46e5; background: rgba(99, 102, 241, 0.12); }
+  body.dark .tabbar { background: rgba(15, 23, 42, 0.7); border-top-color: rgba(255,255,255,0.08); }
+  body.dark .tab { background: none; border: none; }
+  body.dark .tab.on { color: #a5b4fc; background: rgba(129, 140, 248, 0.15); }
+
+  /* Find */
+  .find-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+  .find-row .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .find-row .pname { flex: 1; font-weight: 500; }
+  .find-row .pname small { display: block; color: var(--muted); font-weight: 400; font-size: 0.76rem; }
+  .find-row .chev { color: var(--muted); font-size: 1.2rem; }
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate" style="display:none">
+  <div class="gate-card" id="gateCard"></div>
+</div>
+
+<header class="top">
+  <div>
+    <h1>Decision Impact</h1>
+    <p id="subtitle">See what a change breaks before you make it</p>
+  </div>
+  <div class="top-actions">
+    <button id="themeBtn" class="icon-btn" aria-label="Dark mode">
+      <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    <button id="settingsBtn" class="icon-btn" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+    <button id="profileBtn" class="avatar" aria-label="Open profile">?</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="view on" data-view="home">
+    <section class="panel" aria-label="Overview">
+      <div class="panel-head"><h2>Overview</h2></div>
+      <div class="stats">
+        <div class="stat"><b id="hTasks">0</b><span>Tasks</span></div>
+        <div class="stat"><b id="hTeam">0</b><span>Team</span></div>
+        <div class="stat"><b id="hRisk">0</b><span>Ripples</span></div>
+      </div>
+      <p class="hint" id="hNote"></p>
+    </section>
+    <section class="panel" aria-label="Propose a change">
+    <div class="panel-head"><h2>Propose a change</h2></div>
+
+    <label for="taskSelect">Task</label>
+    <select id="taskSelect"></select>
+
+    <label for="changeType">What to change</label>
+    <select id="changeType">
+      <option value="date">Day</option>
+      <option value="time">Start time</option>
+      <option value="resource">Owner</option>
+      <option value="capacity">Daily capacity</option>
+    </select>
+
+    <div id="valueFields"></div>
+
+    <div class="row-btns">
+      <button id="analyzeBtn" class="primary">Analyze impact</button>
+      <button id="deleteTaskBtn" class="small danger">Delete selected task</button>
+      <button id="resetBtn">Clear all tasks</button>
+    </div>
+  </section>
+    <section class="panel" aria-label="Impact analysis">
+    <div class="panel-head"><h2>Impact</h2></div>
+    <div id="results"><p class="empty">Propose a change to see what it affects.</p></div>
+  </section>
+    <section class="panel" aria-label="Ask Mochi">
+    <div class="panel-head"><h2>Ask Mochi</h2><button id="readBtn" class="small">🔊 Read reply</button></div>
+    <div class="chat-log" id="chatLog"></div>
+    <div class="chips" id="chips"></div>
+    <div class="chat-input">
+      <input id="chatInput" type="text" placeholder="Ask about the plan" autocomplete="off">
+      <button id="chatSend" class="primary">Send</button>
+    </div>
+  </section>
+  </div>
+
+  <div class="view" data-view="calendar">
+    <section class="panel calendar" aria-label="Week calendar">
+    <div class="panel-head">
+      <h2>This week</h2>
+      <div class="seg">
+        <button id="viewAll" class="on">All</button>
+        <button id="viewMine">Mine</button>
+      </div>
+    </div>
+    <div id="cal" class="cal"></div>
+    <p class="hint">Tap a block to see it. Outlines show ripples from the last analysis.</p>
+  </section>
+    <section class="panel" aria-label="Add a task">
+    <div class="panel-head"><h2>Add a task</h2></div>
+    <label for="tName">Task name</label>
+    <input id="tName" type="text" maxlength="40" placeholder="e.g. Client review">
+    <label for="tOwner">Owner</label>
+    <select id="tOwner"></select>
+    <label for="tDay">Day</label>
+    <select id="tDay">
+      <option value="1">Mon</option>
+      <option value="2">Tue</option>
+      <option value="3">Wed</option>
+      <option value="4">Thu</option>
+      <option value="5">Fri</option>
+    </select>
+    <label for="tStart">Start hour (8 to 16)</label>
+    <input id="tStart" type="number" min="8" max="16" step="0.5" value="9">
+    <label for="tDur">Length in hours</label>
+    <input id="tDur" type="number" min="0.5" max="8" step="0.5" value="1">
+    <label for="tRoom">Room</label>
+    <select id="tRoom">
+      <option value="">No room</option>
+      <option value="roomA">Room A</option>
+      <option value="roomB">Room B</option>
+    </select>
+    <label for="tDep">Waits on</label>
+    <select id="tDep"></select>
+    <div class="row-btns"><button id="addTaskBtn" class="primary">Add task</button></div>
+  </section>
+  </div>
+
+  <div class="view" data-view="team">
+    <section class="panel" aria-label="Team members">
+    <div class="panel-head"><h2>Team members</h2></div>
+    <div id="peopleList"></div>
+    <label for="pNewName">New team member</label>
+    <input id="pNewName" type="text" maxlength="30" placeholder="Name">
+    <label for="pNewUser">Username</label>
+    <input id="pNewUser" type="text" maxlength="20" placeholder="e.g. ana.k (optional)" autocapitalize="none">
+    <label for="pNewCap">Hours a day</label>
+    <input id="pNewCap" type="number" min="1" max="12" step="1" value="8">
+    <div class="row-btns"><button id="addPersonBtn" class="primary">Add team member</button></div>
+  </section>
+    <section class="panel biz-only" aria-label="Team workload">
+    <div class="panel-head">
+      <h2>Team workload</h2>
+      <button id="shareBtn" class="small">Share summary</button>
+    </div>
+    <div id="teamBox"></div>
+  </section>
+    <section class="panel biz-only" aria-label="Approvals and activity">
+    <div class="panel-head"><h2>Approvals</h2></div>
+    <div id="approvalBox"></div>
+    <div class="panel-head" style="margin-top:16px">
+      <h2>Activity</h2>
+      <button id="printBtn" class="small">Print plan</button>
+    </div>
+    <div id="activityBox"></div>
+  </section>
+  </div>
+
+  <div class="view" data-view="find">
+    <section class="panel" aria-label="Find a team member">
+      <div class="panel-head"><h2>Find a team member</h2></div>
+      <label for="findInput">Name or @username</label>
+      <input id="findInput" type="text" placeholder="e.g. @ana or Ana" autocomplete="off" autocapitalize="none">
+      <div id="findResults" style="margin-top:12px"></div>
+    </section>
+  </div>
+
+  <div class="view" data-view="me">
+    <section class="panel" aria-label="Your account">
+      <div class="panel-head"><h2>Your account</h2></div>
+      <div class="profile-head">
+        <div class="avatar" id="meAvatar">?</div>
+        <div><strong id="meName">Guest</strong><span id="meSub"></span></div>
+      </div>
+      <div class="row-btns">
+        <button id="meProfile">Edit profile</button>
+        <button id="meSettings">Settings</button>
+        <button id="meSwitch">Switch account</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- Profile sheet -->
+<div class="sheet-bg" id="profileBg">
+  <div class="sheet" role="dialog" aria-label="Profile">
+    <div class="sheet-head"><h2>Profile</h2></div>
+    <div class="profile-head">
+      <div class="avatar" id="pAvatar">?</div>
+      <div>
+        <strong id="pName">Guest</strong>
+        <span id="pRole">Set up your profile</span>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="sTasks">0</b><span>My tasks</span></div>
+      <div class="stat"><b id="sHours">0h</b><span>My hours</span></div>
+      <div class="stat"><b id="sRisk">0</b><span>Ripples now</span></div>
+    </div>
+
+    <label for="pNameIn">Name</label>
+    <input id="pNameIn" type="text" maxlength="24" placeholder="Your name">
+
+    <label for="pRoleIn">Role</label>
+    <input id="pRoleIn" type="text" maxlength="32" placeholder="e.g. Project lead">
+
+    <label for="pPerson">I appear in this plan as</label>
+    <select id="pPerson"></select>
+
+    <div class="row-btns">
+      <button id="pSave" class="primary">Save profile</button>
+      <button id="pClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="sheet-bg" id="settingsBg">
+  <div class="sheet" role="dialog" aria-label="Settings">
+    <div class="sheet-head">
+      <h2>Settings</h2>
+      <button id="sClose" class="small">Done</button>
+    </div>
+
+    <div class="set-group">
+      <h3>Mochi</h3>
+      <div class="set-row">
+        <span>Show Mochi</span>
+        <label class="switch"><input type="checkbox" id="setShowMochi"><span></span></label>
+      </div>
+      <div class="set-row">
+        <span>Wander on its own</span>
+        <label class="switch"><input type="checkbox" id="setWander"><span></span></label>
+      </div>
+      <div class="set-row">
+        <span>Fly to tasks when tapped</span>
+        <label class="switch"><input type="checkbox" id="setFly"><span></span></label>
+      </div>
+      <div class="set-row">
+        <span>Size</span>
+        <div class="seg" id="setCatSize">
+          <button data-v="S">S</button>
+          <button data-v="M">M</button>
+          <button data-v="L">L</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <span>Position</span>
+        <button id="setCatReset" class="small">Back to corner</button>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <h3>Calendar</h3>
+      <div class="set-row">
+        <span>Day starts</span>
+        <select id="setDayStart">
+          <option value="7">7 AM</option>
+          <option value="8">8 AM</option>
+        </select>
+      </div>
+      <div class="set-row">
+        <span>Day ends</span>
+        <select id="setDayEnd">
+          <option value="17">5 PM</option>
+          <option value="18">6 PM</option>
+          <option value="19">7 PM</option>
+        </select>
+      </div>
+      <div class="set-row">
+        <span>Default view</span>
+        <div class="seg" id="setView">
+          <button data-v="all">All</button>
+          <button data-v="mine">Mine</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <h3>Voice</h3>
+      <div class="set-row">
+        <span>Read Mochi's replies aloud</span>
+        <label class="switch"><input type="checkbox" id="setSpeak"><span></span></label>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <h3>Accessibility</h3>
+      <div class="set-row">
+        <span>Reduce motion</span>
+        <label class="switch"><input type="checkbox" id="setReduce"><span></span></label>
+      </div>
+      <div class="set-row">
+        <span>Dark mode</span>
+        <label class="switch"><input type="checkbox" id="setDark"><span></span></label>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <h3>Account</h3>
+      <div class="set-row">
+        <span id="acctLabel">Signed in</span>
+        <button id="setLogout" class="small">Switch account</button>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <h3>About</h3>
+      <div class="set-row"><span>Decision Impact</span><span class="muted">Version 9</span></div>
+      <p class="hint" style="margin-top:4px">Plan tasks and your team, then test a change before you make it. The app shows every conflict the change would cause and suggests a fix. Everything is saved on this device.</p>
+    </div>
+
+    <div class="set-group">
+      <h3>Data</h3>
+      <div class="set-row">
+        <span>Clear all tasks (keep team)</span>
+        <button id="setResetPlan" class="small">Clear</button>
+      </div>
+      <div class="set-row">
+        <span>Delete team and tasks</span>
+        <button id="setDeleteAll" class="small danger">Delete</button>
+      </div>
+      <div class="set-row">
+        <span>Clear profile</span>
+        <button id="setClearProfile" class="small danger">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <button class="tab on" data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span>Home</span></button>
+  <button class="tab" data-tab="calendar"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Calendar</span></button>
+  <button class="tab" data-tab="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.3-5 6.5-5s5.7 1.5 6.5 5"/><circle cx="17" cy="9" r="2.8"/><path d="M16 14.5c2.6.2 4.5 1.6 5 4.5"/></svg><span>Team</span></button>
+  <button class="tab" data-tab="find"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Find</span></button>
+  <button class="tab" data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span>Me</span></button>
+</nav>
+
+<div id="roam">
+  <div id="catMover">
+    <div id="catBubble"></div>
+    <div id="cat" title="Drag me anywhere"></div>
+  </div>
+</div>
+
+<script>
+
+/* ==================================================================
+   MOCHI: SPRITE AND CONTROLLER
+   Drag Mochi anywhere. It stays where you leave it unless wandering is on.
+   ================================================================== */
+
+const R = { happy: 0, sad: 1, surprised: 2, confused: 3, thinking: 4, idea: 5, warning: 6, success: 7 };
+
+const FLY_SPEED = 110;
+const WALK_SPEED = 130;
+const FLY_ARC = 34;
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+
+const CAT_SVG = `
+<svg viewBox="0 0 120 100" width="120" height="100" style="overflow:visible;display:block">
+  <g id="rRig">
+    <g id="rTail">
+      <path d="M36 72 C18 75 8 63 11 48" fill="none" stroke="#4b5160" stroke-width="9" stroke-linecap="round"/>
+      <path d="M11 48 C10 43 11 38 14 34" fill="none" stroke="#f7f7fa" stroke-width="9" stroke-linecap="round"/>
+    </g>
+    <g id="rLegBL"><rect x="36" y="76" width="10" height="17" rx="5" fill="#3d4350"/></g>
+    <g id="rLegBR"><rect x="50" y="76" width="10" height="17" rx="5" fill="#4b5160"/></g>
+    <ellipse cx="54" cy="70" rx="24" ry="17" fill="#4b5160"/>
+    <ellipse cx="72" cy="73" rx="10" ry="12" fill="#f7f7fa"/>
+    <g id="rLegFL"><rect x="64" y="78" width="10" height="16" rx="5" fill="#f7f7fa" stroke="#dfe3eb" stroke-width="1"/></g>
+    <g id="rLegFR"><rect x="77" y="78" width="10" height="16" rx="5" fill="#f7f7fa" stroke="#dfe3eb" stroke-width="1"/></g>
+    <g id="rHead">
+      <path d="M62 38 L60 16 Q61 13 64 15 L76 28 Z" fill="#4b5160"/>
+      <path d="M84 28 L96 15 Q99 13 100 16 L98 38 Z" fill="#4b5160"/>
+      <path d="M65 34 L64 22 L73 29 Z" fill="#ffadbd"/>
+      <path d="M89 29 L96 22 L95 34 Z" fill="#ffadbd"/>
+      <circle cx="80" cy="46" r="21" fill="#4b5160"/>
+      <path d="M77 27 L79 31 M83 27 L81 31" stroke="#343a46" stroke-width="1.5" stroke-linecap="round"/>
+      <ellipse cx="84" cy="58" rx="9.5" ry="6.5" fill="#f7f7fa"/>
+      <ellipse cx="72" cy="56" rx="3.4" ry="2.2" fill="#ffadbd" opacity="0.75"/>
+      <ellipse cx="92" cy="56" rx="3.4" ry="2.2" fill="#ffadbd" opacity="0.75"/>
+      <g id="rEyesOpen">
+        <ellipse cx="72" cy="45" rx="5.8" ry="6.6" fill="#3aa3e0"/>
+        <circle cx="72.5" cy="46" r="3.2" fill="#1b2430"/>
+        <circle cx="74" cy="43.5" r="1.6" fill="#ffffff"/>
+        <ellipse cx="88" cy="45" rx="5.8" ry="6.6" fill="#3aa3e0"/>
+        <circle cx="88.5" cy="46" r="3.2" fill="#1b2430"/>
+        <circle cx="90" cy="43.5" r="1.6" fill="#ffffff"/>
+      </g>
+      <g id="rEyesWide" style="display:none">
+        <ellipse cx="72" cy="45" rx="6.6" ry="7.8" fill="#3aa3e0"/>
+        <circle cx="72.5" cy="46" r="3.6" fill="#1b2430"/>
+        <circle cx="74.2" cy="43" r="1.8" fill="#ffffff"/>
+        <ellipse cx="88" cy="45" rx="6.6" ry="7.8" fill="#3aa3e0"/>
+        <circle cx="88.5" cy="46" r="3.6" fill="#1b2430"/>
+        <circle cx="90.2" cy="43" r="1.8" fill="#ffffff"/>
+      </g>
+      <g id="rEyesClosed" style="display:none">
+        <path d="M66 46 Q72 51 78 46" fill="none" stroke="#1b2430" stroke-width="2" stroke-linecap="round"/>
+        <path d="M82 46 Q88 51 94 46" fill="none" stroke="#1b2430" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <g id="rEyesHappy" style="display:none">
+        <path d="M66 48 Q72 40 78 48" fill="none" stroke="#1b2430" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M82 48 Q88 40 94 48" fill="none" stroke="#1b2430" stroke-width="2.4" stroke-linecap="round"/>
+      </g>
+      <g id="rEyesSad" style="display:none">
+        <ellipse cx="72" cy="47" rx="4.6" ry="5" fill="#3aa3e0"/>
+        <circle cx="72.5" cy="48" r="2.6" fill="#1b2430"/>
+        <ellipse cx="88" cy="47" rx="4.6" ry="5" fill="#3aa3e0"/>
+        <circle cx="88.5" cy="48" r="2.6" fill="#1b2430"/>
+        <path d="M65 42 L76 44" stroke="#1b2430" stroke-width="2" stroke-linecap="round"/>
+        <path d="M95 42 L84 44" stroke="#1b2430" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <path d="M78 52 L82 52 L80 54.5 Z" fill="#ff8fa3"/>
+      <path id="rMouth" d="M78 58 Q80 61.5 82 58 Q84 61.5 86 58" fill="none" stroke="#1b2430" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M68 66 Q80 73 92 66" fill="none" stroke="#2b6fd6" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="80" cy="74" r="3.2" fill="#f2c14e"/>
+      <circle cx="79" cy="73" r="1" fill="#fff6c8"/>
+    </g>
+  </g>
+  <g id="rFx">
+    <text id="fxExclaim" x="106" y="22" font-size="18" font-weight="700" fill="#e67e22" style="display:none">!</text>
+    <text id="fxAlarm" x="106" y="22" font-size="18" font-weight="700" fill="#c0392b" style="display:none">!</text>
+    <text id="fxQ" x="106" y="22" font-size="18" font-weight="700" fill="#2980b9" style="display:none">?</text>
+    <text id="fxZ" x="96" y="14" font-size="13" font-weight="700" fill="#2e86c1" style="display:none">z z</text>
+    <text id="fxSpark" x="100" y="18" font-size="13" fill="#f1c40f" style="display:none">✦ ✦</text>
+    <g id="fxBulb" style="display:none">
+      <circle cx="106" cy="20" r="6" fill="#f7dc6f" stroke="#d4ac0d"/>
+      <rect x="103" y="26" width="6" height="3" fill="#b7950b"/>
+    </g>
+    <g id="fxThink" style="display:none">
+      <circle cx="108" cy="16" r="3" fill="#fff" stroke="#999"/>
+      <circle cx="114" cy="9" r="4.5" fill="#fff" stroke="#999"/>
+    </g>
+  </g>
+</svg>
+`;
+
+const FACE_GROUPS = { open: "rEyesOpen", wide: "rEyesWide", closed: "rEyesClosed", happy: "rEyesHappy", sad: "rEyesSad" };
+const MOUTHS = {
+  smile: "M78 58 Q80 61.5 82 58 Q84 61.5 86 58",
+  flat: "M79 59 L85 59",
+  open: "M80 57 Q82 64 84 57 Z",
+  frown: "M79 61 Q82 57 85 61"
+};
+const FX_IDS = { exclaim: "fxExclaim", alarm: "fxAlarm", question: "fxQ", zz: "fxZ", sparkle: "fxSpark", bulb: "fxBulb", think: "fxThink" };
+
+const BASE = {
+  sx: 1, sy: 1, rigSY: 1, tuck: 0, legAmp: 0, walkRate: 0,
+  tailBase: 0, tailAmp: 8, headRot: 0, headY: 0, armRaise: 0,
+  eye: "open", mouth: "smile", fx: null, sleep: 0
+};
+
+const POSES = {
+  idle: {},
+  walk: { legAmp: 26, walkRate: 9, tailBase: -14, tailAmp: 6 },
+  fly: { tuck: 1, tailBase: 30, tailAmp: 10, rigSY: 1.04 },
+  sleep: { rigSY: 0.86, headRot: 24, headY: 6, tailBase: 60, tailAmp: 3, eye: "closed", mouth: "flat", fx: "zz", sleep: 1 },
+  happy: { eye: "happy", mouth: "open", fx: "sparkle" },
+  sad: { eye: "sad", mouth: "frown", headRot: -6, headY: 3 },
+  surprised: { eye: "wide", mouth: "open", fx: "exclaim" },
+  confused: { headRot: -14, fx: "question", mouth: "flat" },
+  thinking: { headRot: 8, armRaise: 1, fx: "think", mouth: "flat" },
+  idea: { armRaise: 1, fx: "bulb" },
+  warning: { eye: "wide", mouth: "open", fx: "alarm" },
+  success: { eye: "happy", mouth: "open", armRaise: 1, fx: "sparkle" }
+};
+
+const REACT_NAMES = ["happy", "sad", "surprised", "confused", "thinking", "idea", "warning", "success"];
+const LERP_KEYS = ["sx", "sy", "rigSY", "tuck", "legAmp", "tailBase", "tailAmp", "headRot", "headY", "armRaise"];
+
+const Mochi = (() => {
+  const mover = document.getElementById("catMover");
+  const el = document.getElementById("cat");
+  const bubble = document.getElementById("catBubble");
+  const roam = document.getElementById("roam");
+
+  const T = { ...BASE };
+  const C = { ...BASE };
+  const rig = {};
+
+  let facing = 1;
+  let phase = 0;
+  let t = 0;
+  let last = performance.now();
+  let blinkUntil = 0;
+  let nextBlink = 0;
+  let faceKey = "";
+  let fxKey = null;
+  let tok = 0;
+  let asleep = false;
+  let pos = { x: 10, y: 0 };     // x from left, y = lift above home
+  let homeY = 24;                // resting height above the bottom edge
+  let lastAct = 0;
+  let flyRaf = null;
+  let flyResolve = null;
+  let bubbleTimer = null;
+
+  let enabled = true;
+  let hidden = false;
+  function syncRoamDisplay() { roam.style.display = (enabled && !hidden) ? "" : "none"; }
+  let wander = false;
+  let dragging = false;
+  let dragStart = null;
+  let onPlaced = null;
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const maxX = () => Math.max(4, window.innerWidth - el.offsetWidth - 4);
+  const maxY = () => Math.max(0, window.innerHeight - el.offsetHeight - 4);
+
+  function setPose(name, over = {}) {
+    const keepX = T.sx, keepY = T.sy;
+    Object.assign(T, BASE, POSES[name] || {}, over);
+    T.sx = keepX;
+    T.sy = keepY;
+  }
+
+  function buildRig() {
+    el.innerHTML = CAT_SVG;
+    el.style.width = "120px";
+    el.style.height = "100px";
+    const q = id => document.getElementById(id);
+    rig.root = q("rRig");
+    rig.tail = q("rTail");
+    rig.head = q("rHead");
+    rig.mouth = q("rMouth");
+    rig.legFL = q("rLegFL");
+    rig.legFR = q("rLegFR");
+    rig.legBL = q("rLegBL");
+    rig.legBR = q("rLegBR");
+    rig.faces = Object.fromEntries(Object.values(FACE_GROUPS).map(id => [id, q(id)]));
+    rig.fx = Object.fromEntries(Object.values(FX_IDS).map(id => [id, q(id)]));
+
+    rig.root.style.transformOrigin = "60px 96px";
+    rig.tail.style.transformOrigin = "34px 70px";
+    rig.head.style.transformOrigin = "78px 66px";
+    for (const l of [rig.legFL, rig.legFR, rig.legBL, rig.legBR]) {
+      l.style.transformOrigin = "50% 0%";
+      l.style.transformBox = "fill-box";
+    }
+  }
+
+  function showFace(eye, mouth) {
+    for (const key of Object.keys(FACE_GROUPS)) {
+      rig.faces[FACE_GROUPS[key]].style.display = key === eye ? "" : "none";
+    }
+    rig.mouth.setAttribute("d", MOUTHS[mouth] || MOUTHS.smile);
+  }
+
+  function updateFace(now) {
+    let eye = T.eye;
+    if (eye === "open" && now < blinkUntil) eye = "closed";
+    const key = eye + "|" + T.mouth;
+    if (key !== faceKey) {
+      faceKey = key;
+      showFace(eye, T.mouth);
+    }
+  }
+
+  function updateFx() {
+    if (T.fx === fxKey) return;
+    fxKey = T.fx;
+    for (const key of Object.keys(FX_IDS)) {
+      rig.fx[FX_IDS[key]].style.display = key === T.fx ? "" : "none";
+    }
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    t += dt;
+    phase += dt * T.walkRate;
+
+    const k = 1 - Math.exp(-dt * 12);
+    for (const key of LERP_KEYS) C[key] += (T[key] - C[key]) * k;
+    C.sx += (T.sx - C.sx) * k;
+    C.sy += (T.sy - C.sy) * k;
+
+    const s = Math.sin(phase);
+    const breath = T.sleep
+      ? 1 + 0.02 * Math.sin(t * 1.2)
+      : 1 + 0.015 * Math.sin(t * 2.2);
+    const bob = C.legAmp > 1 ? -Math.abs(s) * 2 : 0;
+
+    rig.root.style.transform =
+      `translate(0px, ${bob}px) scale(${facing * C.sx}, ${C.sy * C.rigSY * breath})`;
+    rig.tail.style.transform =
+      `rotate(${C.tailBase + Math.sin(t * 2.6) * C.tailAmp}deg)`;
+    rig.head.style.transform =
+      `translate(0px, ${C.headY}px) rotate(${C.headRot}deg)`;
+    rig.legFL.style.transform =
+      `rotate(${C.legAmp * s + C.tuck * -35 + C.armRaise * -75}deg)`;
+    rig.legFR.style.transform =
+      `rotate(${C.legAmp * -s + C.tuck * -35}deg)`;
+    rig.legBL.style.transform =
+      `rotate(${C.legAmp * -s + C.tuck * 35}deg)`;
+    rig.legBR.style.transform =
+      `rotate(${C.legAmp * s + C.tuck * 35}deg)`;
+
+    updateFace(now);
+    updateFx();
+
+    if (now > nextBlink) {
+      blinkUntil = now + 130;
+      nextBlink = now + rnd(2500, 5000);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function render() {
+    mover.style.transform = `translate3d(${pos.x}px, ${-(homeY + pos.y)}px, 0)`;
+  }
+
+  function say(text, ms = 2200) {
+    if (!text) return delay(ms);
+    bubble.textContent = text;
+    bubble.style.opacity = 1;
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => { bubble.style.opacity = 0; }, ms);
+    return delay(ms);
+  }
+
+  function cancelFly() {
+    lastAct = Date.now();
+    if (flyRaf) cancelAnimationFrame(flyRaf);
+    flyRaf = null;
+    if (flyResolve) {
+      const r = flyResolve;
+      flyResolve = null;
+      r();
+    }
+  }
+
+  function idle() {
+    asleep = false;
+    pos.y = 0;
+    render();
+    setPose("idle");
+  }
+
+  function sleep() {
+    tok++;
+    cancelFly();
+    asleep = true;
+    setPose("sleep");
+    say("zzz", 2200);
+  }
+
+  function react(index, ms, text) {
+    tok++;
+    const my = tok;
+    cancelFly();
+    asleep = false;
+    setPose(REACT_NAMES[index] || "idle");
+    say(text, ms);
+    return new Promise(res => {
+      setTimeout(() => {
+        if (my === tok) idle();
+        res();
+      }, ms);
+    });
+  }
+
+  // Moves horizontally at the current height. Mochi never leaves the height you put it at.
+  function move(targetX, { arc = FLY_ARC, speed = FLY_SPEED, anim = "fly" } = {}) {
+    tok++;
+    const my = tok;
+    cancelFly();
+    asleep = false;
+
+    const x = clamp(targetX, 4, maxX());
+    const startX = pos.x;
+    const dur = Math.max(0.45, Math.abs(x - startX) / speed);
+    facing = x < startX ? -1 : 1;
+    setPose(anim);
+
+    T.sx = 1.1;
+    T.sy = 0.86;
+    setTimeout(() => { if (my === tok) { T.sx = 0.94; T.sy = 1.06; } }, 110);
+    setTimeout(() => { if (my === tok) { T.sx = 1; T.sy = 1; } }, 230);
+
+    return new Promise(resolve => {
+      flyResolve = resolve;
+      const t0 = performance.now();
+      const step = now => {
+        if (my !== tok) {
+          resolve();
+          flyResolve = null;
+          return;
+        }
+        const p = Math.min(1, (now - t0) / (dur * 1000));
+        const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+        pos.x = startX + (x - startX) * e;
+        pos.y = arc > 0 ? arc * Math.sin(Math.PI * p) : 0;
+        render();
+        if (p < 1) {
+          flyRaf = requestAnimationFrame(step);
+          return;
+        }
+        flyRaf = null;
+        flyResolve = null;
+        T.sx = 1.18;
+        T.sy = 0.8;
+        setTimeout(() => { if (my === tok) { T.sx = 1; T.sy = 1; } }, 150);
+        idle();
+        resolve();
+      };
+      flyRaf = requestAnimationFrame(step);
+    });
+  }
+
+  function flyTo(x) { return move(x, { arc: FLY_ARC, speed: FLY_SPEED, anim: "fly" }); }
+  function walkTo(x) { return move(x, { arc: 0, speed: WALK_SPEED, anim: "walk" }); }
+
+  function jump() {
+    tok++;
+    const my = tok;
+    cancelFly();
+    asleep = false;
+    setPose("fly", { tailAmp: 4 });
+    return new Promise(res => {
+      T.sx = 1.12;
+      T.sy = 0.88;
+      setTimeout(() => {
+        if (my !== tok) { res(); return; }
+        const t0 = performance.now();
+        const dur = 620;
+        T.sx = 0.94;
+        T.sy = 1.08;
+        const step = now => {
+          if (my !== tok) { res(); return; }
+          const p = Math.min(1, (now - t0) / dur);
+          pos.y = 40 * Math.sin(Math.PI * p);
+          render();
+          if (p < 1) {
+            requestAnimationFrame(step);
+            return;
+          }
+          T.sx = 1.18;
+          T.sy = 0.8;
+          setTimeout(() => { if (my === tok) { T.sx = 1; T.sy = 1; } }, 150);
+          setTimeout(() => { if (my === tok) idle(); res(); }, 200);
+        };
+        requestAnimationFrame(step);
+      }, 120);
+    });
+  }
+
+  function poke() {
+    const lines = ["Purr...", "Meow! I'm Mochi.", "Ask me about the plan!", "Ready when you are"];
+    react(R.happy, 1400, lines[Math.floor(Math.random() * lines.length)]);
+  }
+
+  function nap() {
+    sleep();
+    return delay(rnd(7000, 13000)).then(() => {
+      if (asleep) react(R.surprised, 800, "Oh! Nap's over.");
+    });
+  }
+
+  async function wanderLoop() {
+    for (;;) {
+      await delay(rnd(3000, 6000));
+      if (!enabled || !wander || dragging || Date.now() - lastAct < 4000 || asleep) continue;
+      const r = Math.random();
+      if (r < 0.5) {
+        await walkTo(rnd(4, maxX()));
+      } else if (r < 0.65) {
+        setPose("idle");
+        await delay(rnd(2000, 4000));
+      } else if (r < 0.75) {
+        await jump();
+      } else {
+        await nap();
+      }
+    }
+  }
+
+  function clampHome() {
+    pos.x = clamp(pos.x, 4, maxX());
+    homeY = clamp(homeY, 0, maxY());
+    render();
+  }
+
+  function finishDrag(tap) {
+    if (!dragging) return;
+    dragging = false;
+    const moved = dragStart && dragStart.moved;
+    dragStart = null;
+    if (moved) {
+      if (onPlaced) onPlaced({ x: pos.x, y: homeY });
+      idle();
+      say("Here I am!", 1200);
+    } else if (tap) {
+      poke();
+    } else {
+      idle();
+    }
+  }
+
+  function bindDrag() {
+    el.addEventListener("pointerdown", e => {
+      if (e.button > 0) return;
+      dragging = true;
+      tok++;
+      cancelFly();
+      asleep = false;
+      dragStart = { px: e.clientX, py: e.clientY, x: pos.x, h: homeY, moved: false };
+      try { el.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      e.preventDefault();
+    });
+    el.addEventListener("pointermove", e => {
+      if (!dragging || !dragStart) return;
+      const dx = e.clientX - dragStart.px;
+      const dy = e.clientY - dragStart.py;
+      if (Math.abs(dx) + Math.abs(dy) > 6) dragStart.moved = true;
+      if (Math.abs(dx) > 2) facing = dx < 0 ? -1 : 1;
+      pos.x = clamp(dragStart.x + dx, 4, maxX());
+      homeY = clamp(dragStart.h - dy, 0, maxY());
+      pos.y = 0;
+      render();
+    });
+    el.addEventListener("pointerup", () => finishDrag(true));
+    el.addEventListener("pointercancel", () => finishDrag(false));
+  }
+
+  function init(opts = {}) {
+    onPlaced = opts.onPlaced || null;
+    buildRig();
+    pos = { x: opts.x ?? Math.max(4, window.innerWidth - 150), y: 0 };
+    homeY = opts.y ?? 24;
+    clampHome();
+    idle();
+    bindDrag();
+    window.addEventListener("resize", clampHome);
+    nextBlink = performance.now() + 2000;
+    requestAnimationFrame(frame);
+    wanderLoop();
+  }
+
+  return {
+    init,
+    idle,
+    react,
+    flyTo,
+    walkTo,
+    jump,
+    say,
+    sleep,
+    poke,
+    clampHome,
+    setHidden(v) { hidden = v; syncRoamDisplay(); },
+    wake() { if (asleep) react(R.surprised, 700, "Oh! I'm up!"); },
+    stopTour() { tok++; cancelFly(); },
+    configure({ enabled: e, wander: w }) {
+      if (typeof e === "boolean") {
+        enabled = e;
+        syncRoamDisplay();
+        if (!e && asleep) idle();
+      }
+      if (typeof w === "boolean") {
+        wander = w;
+        if (!w && asleep) idle();
+      }
+      clampHome();
+    },
+    position() { return { x: pos.x, y: homeY }; },
+    placeHome(x, y) {
+      pos.x = x;
+      homeY = y;
+      clampHome();
+    }
+  };
+})();
+
+/* Stage x position for a task's day and start hour */
+function xForSlot(t) {
+  const el = document.getElementById("cat");
+  const catW = el.offsetWidth || 90;
+  const usable = window.innerWidth - catW - 20;
+  const frac = clamp(((t.day - 1) + (t.start - FIRST_HOUR) / (LAST_HOUR - FIRST_HOUR)) / 5, 0, 1);
+  return 10 + frac * usable;
+}
+
+/* ==================================================================
+   SETTINGS AND PROFILE STORAGE
+   Saved on this device. Clearing the browser data resets them.
+   ================================================================== */
+
+const SETTINGS_KEY = "decisionImpact.settings";
+const PROFILE_KEY = "decisionImpact.profile";
+const DEFAULT_SETTINGS = {
+  showMochi: true,
+  wander: false,
+  flyToTasks: true,
+  catSize: "M",
+  catX: null,
+  catY: null,
+  dayStart: 8,
+  dayEnd: 17,
+  defaultView: "all",
+  reduceMotion: false,
+  speak: false,
+  dark: false
+};
+const ZOOM = { S: 0.75, M: 1, L: 1.3 };
+
+let settings = { ...DEFAULT_SETTINGS };
+let profile = { name: "", role: "", person: "" };
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch (e) { /* storage unavailable: keep defaults */ }
+}
+
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ }
+}
+
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (raw) Object.assign(profile, JSON.parse(raw));
+  } catch (e) { /* ignore */ }
+}
+
+function saveProfile() {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch (e) { /* ignore */ }
+}
+
+/* ==================================================================
+   DATA MODEL
+   ================================================================== */
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+let PEOPLE = {};
+const PALETTE = ["#4f46e5", "#0d9488", "#db2777", "#d97706", "#7c3aed", "#0284c7", "#65a30d", "#dc2626"];
+function colorOf(pid) { return (PEOPLE[pid] && PEOPLE[pid].color) || "#6b7280"; }
+
+const OWNER_COLOR = { ana: "#4f46e5", ben: "#0d9488", chloe: "#db2777", dev: "#d97706" };
+
+const ROOMS = {
+  roomA: { name: "Room A" },
+  roomB: { name: "Room B" }
+};
+
+let FIRST_HOUR = 8;
+let LAST_HOUR = 17;
+const HOUR_H = 52;
+
+const INITIAL_TASKS = {};
+
+const INITIAL_PEOPLE = clone(PEOPLE);
+let tasks = clone(INITIAL_TASKS);
+let lastImpacts = null;
+let lastResult = null;
+let tourRun = 0;
+let viewMode = "all";
+
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function end(t) { return t.start + t.duration; }
+
+function timeLabel(h) {
+  const hh = Math.floor(h);
+  const mm = Math.round((h - hh) * 60);
+  const suffix = hh >= 12 ? "PM" : "AM";
+  const h12 = ((hh + 11) % 12) + 1;
+  return `${h12}:${String(mm).padStart(2, "0")} ${suffix}`;
+}
+
+function slotLabel(t) {
+  return `${DAYS[t.day - 1]} ${timeLabel(t.start)} to ${timeLabel(end(t))}`;
+}
+
+function overlaps(a, b) {
+  return a.day === b.day && a.start < end(b) && b.start < end(a);
+}
+
+function depsSatisfied(task, state) {
+  return task.deps.every(d => {
+    const p = state[d];
+    return p.day < task.day || (p.day === task.day && end(p) <= task.start);
+  });
+}
+
+function dayLoad(personId, day, state = tasks) {
+  return Object.values(state)
+    .filter(t => t.owner === personId && t.day === day)
+    .reduce((s, t) => s + t.duration, 0);
+}
+
+function initials(name, person) {
+  const src = name.trim() || (person ? PEOPLE[person].name : "");
+  if (!src) return "?";
+  return src.split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+}
+
+/* ==================================================================
+   RENDERING
+   ================================================================== */
+
+function layoutLanes(ids) {
+  const sorted = [...ids].sort((a, b) => tasks[a].start - tasks[b].start);
+  const laneEnds = [];
+  const lane = new Map();
+  for (const id of sorted) {
+    const t = tasks[id];
+    let i = laneEnds.findIndex(e => e <= t.start);
+    if (i === -1) { i = laneEnds.length; laneEnds.push(0); }
+    laneEnds[i] = end(t);
+    lane.set(id, i);
+  }
+  return { lane, count: Math.max(1, laneEnds.length) };
+}
+
+function blockClass(id) {
+  let cls = "block";
+  if (profile.person && tasks[id].owner === profile.person) cls += " mine";
+  if (lastImpacts) {
+    if (id === lastImpacts.changedId) cls += " changed";
+    else if (lastImpacts.levels.has(id)) cls += ` i${Math.min(lastImpacts.levels.get(id).level, 3)}`;
+  }
+  return cls;
+}
+
+function renderCalendar() {
+  const cal = document.getElementById("cal");
+  const hours = LAST_HOUR - FIRST_HOUR;
+  const bodyH = hours * HOUR_H;
+  const pf = viewMode.startsWith("person:") ? viewMode.slice(7) : "";
+  const filterId = (pf && PEOPLE[pf]) ? pf : (viewMode === "mine" && profile.person ? profile.person : null);
+
+  let html = `<div class="dh"></div>` + DAYS.map(d => `<div class="dh"><b>${d}</b></div>`).join("");
+
+  let gutter = "";
+  for (let h = FIRST_HOUR; h <= LAST_HOUR; h++) {
+    const label = `${((h + 11) % 12) + 1}${h >= 12 ? "p" : "a"}`;
+    gutter += `<span style="top:${(h - FIRST_HOUR) * HOUR_H}px">${label}</span>`;
+  }
+  html += `<div class="gutter" style="height:${bodyH}px">${gutter}</div>`;
+
+  for (let day = 1; day <= 5; day++) {
+    const ids = Object.keys(tasks).filter(id =>
+      tasks[id].day === day && (!filterId || tasks[id].owner === filterId));
+    const { lane, count } = layoutLanes(ids);
+    const width = 100 / count;
+
+    html += `<div class="col" style="height:${bodyH}px">`;
+    for (const id of ids) {
+      const t = tasks[id];
+      const top = (t.start - FIRST_HOUR) * HOUR_H + 1;
+      const height = t.duration * HOUR_H - 3;
+      const left = lane.get(id) * width;
+      const who = t.owner ? PEOPLE[t.owner].name : "";
+      html += `<div class="${blockClass(id)}" data-id="${id}"
+        style="--c:${colorOf(t.owner)};top:${top}px;height:${height}px;left:calc(${left}% + 2px);width:calc(${width}% - 4px)">
+        <b>${t.name}</b><small>${timeLabel(t.start)}${who ? " · " + who : ""}</small></div>`;
+    }
+    html += `</div>`;
+  }
+
+  cal.innerHTML = html;
+}
+
+function renderProfile() {
+  const who = profile.person && PEOPLE[profile.person] ? PEOPLE[profile.person].name : "";
+  const label = profile.name.trim() || who || "Guest";
+  const sub = [profile.role.trim(), who ? `Plan member: ${who}` : ""].filter(Boolean).join(" · ") || "Set up your profile";
+  const av = initials(profile.name, profile.person);
+
+  document.getElementById("profileBtn").textContent = av;
+  document.getElementById("pAvatar").textContent = av;
+  document.getElementById("pName").textContent = label;
+  document.getElementById("pRole").textContent = sub;
+
+  const mine = profile.person ? Object.values(tasks).filter(t => t.owner === profile.person) : [];
+  document.getElementById("sTasks").textContent = mine.length;
+  document.getElementById("sHours").textContent = `${mine.reduce((s, t) => s + t.duration, 0)}h`;
+  document.getElementById("sRisk").textContent = lastResult ? lastResult.levels.size : 0;
+}
+
+function populateTaskSelect() {
+  const sel = document.getElementById("taskSelect");
+  const current = sel.value;
+  const ids = Object.keys(tasks);
+  sel.innerHTML = ids.length
+    ? ids.map(id => `<option value="${id}">${esc(tasks[id].name)}</option>`).join("")
+    : `<option value="">No tasks yet</option>`;
+  if (current && tasks[current]) sel.value = current;
+  sel.onchange = () => {
+    renderValueFields();
+    if (tasks[sel.value]) goTo(xForSlot(tasks[sel.value]));
+  };
+}
+
+function renderValueFields() {
+  const id = document.getElementById("taskSelect").value;
+  const type = document.getElementById("changeType").value;
+  const t = tasks[id];
+  const box = document.getElementById("valueFields");
+  if (!t) { box.innerHTML = ""; return; }
+
+  if (type === "date") {
+    box.innerHTML = `
+      <label for="newDay">New day</label>
+      <select id="newDay">${DAYS.map((d, i) => `<option value="${i + 1}" ${i + 1 === t.day ? "selected" : ""}>${d}</option>`).join("")}</select>`;
+  } else if (type === "time") {
+    box.innerHTML = `
+      <label for="newStart">New start hour (8 to 16)</label>
+      <input id="newStart" type="number" min="8" max="16" step="0.5" value="${t.start}">`;
+  } else if (type === "resource") {
+    const opts = Object.keys(PEOPLE).map(p => `<option value="${p}" ${p === t.owner ? "selected" : ""}>${esc(PEOPLE[p].name)}</option>`).join("");
+    box.innerHTML = `
+      <label for="newOwner">New owner</label>
+      <select id="newOwner">${opts}</select>`;
+  } else if (type === "capacity") {
+    const who = PEOPLE[t.owner];
+    if (!who) { box.innerHTML = ""; return; }
+    box.innerHTML = `
+      <label for="newCap">New daily capacity for ${esc(who.name)} (hours)</label>
+      <input id="newCap" type="number" min="1" max="12" step="1" value="${who.dailyCapacity}">`;
+  }
+}
+
+function populateOwnerSelect() {
+  const sel = document.getElementById("tOwner");
+  const cur = sel.value;
+  const ids = Object.keys(PEOPLE);
+  sel.innerHTML = ids.length
+    ? ids.map(p => `<option value="${p}">${esc(PEOPLE[p].name)}</option>`).join("")
+    : `<option value="">Add a team member first</option>`;
+  if (cur && PEOPLE[cur]) sel.value = cur;
+}
+
+function populateDepSelect() {
+  const sel = document.getElementById("tDep");
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">Nothing</option>` +
+    Object.keys(tasks).map(id => `<option value="${id}">${esc(tasks[id].name)}</option>`).join("");
+  if (cur && tasks[cur]) sel.value = cur;
+}
+
+function renderPeople() {
+  const box = document.getElementById("peopleList");
+  const ids = Object.keys(PEOPLE);
+  box.innerHTML = ids.length
+    ? ids.map(p => {
+        const n = Object.values(tasks).filter(t => t.owner === p).length;
+        return `<div class="person-row">
+          <span class="dot" style="background:${colorOf(p)}"></span>
+          <div class="pname">${esc(PEOPLE[p].name)}<small>@${esc(PEOPLE[p].username || "")} · ${PEOPLE[p].dailyCapacity}h a day · ${n} task${n === 1 ? "" : "s"}</small></div>
+          <button class="small danger" data-remove="${p}">Remove</button>
+        </div>`;
+      }).join("")
+    : `<p class="empty">No team members yet. Add the first one below.</p>`;
+}
+
+function flash(msg) {
+  Mochi.react(R.confused, 1800, msg);
+}
+
+function addPerson() {
+  const name = val("pNewName").trim();
+  const cap = Number(val("pNewCap"));
+  let username = val("pNewUser").trim().toLowerCase().replace(/^@/, "");
+  if (!username) username = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (!name) return flash("Enter a name first");
+  if (!(cap >= 1 && cap <= 12)) return flash("Hours must be 1 to 12");
+  if (!/^[a-z0-9_.]{3,20}$/.test(username)) return flash("Username: 3 to 20 letters, numbers, _ or .");
+  if (Object.values(PEOPLE).some(p => p.username === username)) return flash(`@${username} is already taken`);
+  const id = "p" + randomHex(4);
+  PEOPLE[id] = { name, username, dailyCapacity: cap, color: PALETTE[Object.keys(PEOPLE).length % PALETTE.length] };
+  document.getElementById("pNewName").value = "";
+  document.getElementById("pNewUser").value = "";
+  logActivity(`Added team member: ${name} (@${username})`);
+  refreshAll();
+  Mochi.react(R.happy, 1200, `${name} joined the team`);
+}
+
+function removePerson(id) {
+  const owned = Object.values(tasks).filter(t => t.owner === id).length;
+  if (owned) return flash(`${PEOPLE[id].name} has ${owned} task${owned === 1 ? "" : "s"}. Delete or move them first.`);
+  const name = PEOPLE[id].name;
+  delete PEOPLE[id];
+  if (profile.person === id) {
+    profile.person = "";
+    saveProfile();
+  }
+  logActivity(`Removed team member: ${name}`);
+  refreshAll();
+}
+
+function addTask() {
+  const name = val("tName").trim();
+  const owner = val("tOwner");
+  const day = Number(val("tDay"));
+  const start = Number(val("tStart"));
+  const duration = Number(val("tDur"));
+  const room = val("tRoom") || null;
+  const dep = val("tDep");
+  if (!name) return flash("Give the task a name");
+  if (!owner || !PEOPLE[owner]) return flash("Add a team member first");
+  if (!(start >= 8 && start <= 16)) return flash("Start must be 8 to 16");
+  if (!(duration >= 0.5 && duration <= 8)) return flash("Length must be 0.5 to 8 hours");
+  if (start + duration > 17) return flash("The task must end by 5 PM");
+  const id = "t" + randomHex(4);
+  tasks[id] = { name, day, start, duration, owner, room, deps: dep && tasks[dep] ? [dep] : [] };
+  document.getElementById("tName").value = "";
+  lastImpacts = null;
+  lastResult = null;
+  logActivity(`Added task: ${name}`);
+  refreshAll();
+  Mochi.react(R.happy, 1200, "Task added");
+}
+
+function deleteSelectedTask() {
+  const id = document.getElementById("taskSelect").value;
+  if (!tasks[id]) return flash("No task selected");
+  const name = tasks[id].name;
+  delete tasks[id];
+  for (const k of Object.keys(tasks)) tasks[k].deps = tasks[k].deps.filter(d => d !== id);
+  lastImpacts = null;
+  lastResult = null;
+  document.getElementById("results").innerHTML = `<p class="empty">Deleted "${esc(name)}".</p>`;
+  logActivity(`Deleted task: ${name}`);
+  refreshAll();
+}
+
+function refreshAll() {
+  renderCalendar();
+  populateTaskSelect();
+  renderValueFields();
+  renderProfile();
+  renderPeople();
+  populateOwnerSelect();
+  populateDepSelect();
+  renderBusiness();
+  renderHome();
+  if (currentTab === "find") findRender();
+  if (currentTab === "me") renderMe();
+  savePlan();
+}
+
+let currentTab = "home";
+let findSelected = null;
+
+function showTab(name) {
+  currentTab = name;
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.dataset.view === name));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.tab === name));
+  if (name === "find") findRender();
+  if (name === "me") renderMe();
+  if (name === "calendar") renderCalendar();
+  window.scrollTo(0, 0);
+}
+
+function renderHome() {
+  const taskCount = Object.keys(tasks).length;
+  const teamCount = Object.keys(PEOPLE).length;
+  document.getElementById("hTasks").textContent = taskCount;
+  document.getElementById("hTeam").textContent = teamCount;
+  document.getElementById("hRisk").textContent = lastResult ? lastResult.levels.size : 0;
+
+  let over = 0;
+  for (const p of Object.keys(PEOPLE)) {
+    for (let d = 1; d <= 5; d++) {
+      if (dayLoad(p, d) > PEOPLE[p].dailyCapacity) over++;
+    }
+  }
+  const note = document.getElementById("hNote");
+  note.textContent = !teamCount ? "Start by adding a team member in the Team tab."
+    : !taskCount ? "Add tasks in the Calendar tab."
+    : over ? `${over} day${over === 1 ? "" : "s"} over capacity. Propose a change below to fix it.`
+    : "Everyone is within capacity.";
+}
+
+function renderMe() {
+  document.getElementById("meAvatar").textContent = initials(account ? account.name : "", "");
+  document.getElementById("meName").textContent = account ? account.name : "Guest";
+  let sub = "";
+  if (account) {
+    if (account.guest) sub = "Guest · not saved to an account";
+    else if (account.mode === "business") sub = `${account.company} · ${account.role === "member" ? "Team member" : "Manager"}`;
+    else sub = `Personal · ${account.email}`;
+  }
+  document.getElementById("meSub").textContent = sub;
+}
+
+function findRender() {
+  if (findSelected && PEOPLE[findSelected]) return showPerson(findSelected);
+  findSelected = null;
+  const box = document.getElementById("findResults");
+  const q = val("findInput").trim().toLowerCase().replace(/^@/, "");
+  const ids = Object.keys(PEOPLE).filter(p =>
+    !q || PEOPLE[p].name.toLowerCase().includes(q) || (PEOPLE[p].username || "").includes(q));
+  if (!Object.keys(PEOPLE).length) {
+    box.innerHTML = `<p class="empty">No team members yet. Add them in the Team tab.</p>`;
+    return;
+  }
+  if (!ids.length) {
+    box.innerHTML = `<p class="empty">No one matches "${esc(q)}".</p>`;
+    return;
+  }
+  box.innerHTML = ids.map(p => {
+    const n = Object.values(tasks).filter(t => t.owner === p).length;
+    return `<button class="find-row" data-find="${p}">
+      <span class="dot" style="background:${colorOf(p)}"></span>
+      <span class="pname">${esc(PEOPLE[p].name)}<small>@${esc(PEOPLE[p].username || "")} · ${n} task${n === 1 ? "" : "s"}</small></span>
+      <span class="chev">›</span></button>`;
+  }).join("");
+}
+
+function showPerson(id) {
+  findSelected = id;
+  const p = PEOPLE[id];
+  const mine = Object.keys(tasks)
+    .filter(t => tasks[t].owner === id)
+    .sort((a, b) => tasks[a].day - tasks[b].day || tasks[a].start - tasks[b].start);
+  const rows = mine.length
+    ? mine.map(t => `<div class="act"><b>${esc(tasks[t].name)}</b>
+        <small>${esc(slotLabel(tasks[t]))}${tasks[t].room ? " · " + ROOMS[tasks[t].room].name : ""}</small></div>`).join("")
+    : `<p class="empty">No tasks yet.</p>`;
+  document.getElementById("findResults").innerHTML = `
+    <div class="profile-head" style="margin-bottom:12px">
+      <div class="avatar" style="background:${colorOf(id)}">${initials(p.name, "")}</div>
+      <div><strong>${esc(p.name)}</strong><span>@${esc(p.username || "")} · ${p.dailyCapacity}h a day</span></div>
+    </div>
+    <div class="row-btns" style="margin-top:0;grid-template-columns:1fr 1fr">
+      <button class="small" data-cal="${id}">Show on calendar</button>
+      <button class="small" data-back="1">All results</button>
+    </div>
+    <div style="margin-top:12px">${rows}</div>`;
+}
+
+const PLAN_KEY = "decisionImpact.plan";
+function savePlan() {
+  writeJSON(PLAN_KEY, { people: PEOPLE, tasks });
+}
+function loadPlan() {
+  const p = readJSON(PLAN_KEY, null);
+  if (!p) return;
+  PEOPLE = p.people || {};
+  tasks = p.tasks || {};
+  if (profile.person && !PEOPLE[profile.person]) profile.person = "";
+}
+
+/* Fly Mochi to a point only if the setting allows it */
+function goTo(x) {
+  if (!settings.flyToTasks || settings.reduceMotion) return Promise.resolve();
+  return Mochi.flyTo(x);
+}
+
+/* ==================================================================
+   IMPACT ENGINE
+   Works on a copy. The live plan changes only when Apply is pressed.
+   ================================================================== */
+
+function analyze(changedId, type, value) {
+  const before = clone(tasks);
+  const after = clone(tasks);
+  const changed = after[changedId];
+  const caps = Object.fromEntries(Object.keys(PEOPLE).map(k => [k, PEOPLE[k].dailyCapacity]));
+  const notes = [];
+
+  if (type === "date") {
+    changed.day = Number(value);
+    notes.push(`${before[changedId].name} moves from ${DAYS[before[changedId].day - 1]} to ${DAYS[changed.day - 1]}.`);
+  } else if (type === "time") {
+    changed.start = Number(value);
+    notes.push(`${before[changedId].name} starts at ${timeLabel(changed.start)} instead of ${timeLabel(before[changedId].start)}.`);
+  } else if (type === "resource") {
+    changed.owner = value;
+    notes.push(`${before[changedId].name} is now owned by ${PEOPLE[value].name} instead of ${PEOPLE[before[changedId].owner].name}.`);
+  } else if (type === "capacity") {
+    caps[changed.owner] = Number(value);
+    notes.push(`${PEOPLE[changed.owner].name}'s daily capacity changes to ${Number(value)} hours.`);
+  }
+
+  const levels = new Map();
+  const queue = [];
+
+  function addImpact(id, level, reason, parentId) {
+    if (id === changedId) return;
+    if (levels.has(id) && levels.get(id).level <= level) return;
+    levels.set(id, { level, reason, parentId });
+    queue.push(id);
+  }
+
+  // Level 1: direct impacts
+  for (const id of Object.keys(after)) {
+    if (id === changedId) continue;
+    const other = after[id];
+
+    if (changed.owner && other.owner === changed.owner && overlaps(changed, other)) {
+      addImpact(id, 1, `${PEOPLE[other.owner].name} is double-booked: "${changed.name}" and "${other.name}" now overlap on ${DAYS[other.day - 1]}.`, changedId);
+    }
+    if (changed.room && other.room === changed.room && overlaps(changed, other)) {
+      addImpact(id, 1, `${ROOMS[other.room].name} is double-booked by "${changed.name}" and "${other.name}".`, changedId);
+    }
+    if (other.deps.includes(changedId)) {
+      if (changed.day > other.day || (changed.day === other.day && end(changed) > other.start)) {
+        addImpact(id, 1, `"${other.name}" depends on "${changed.name}", which now finishes after "${other.name}" is scheduled to start.`, changedId);
+      }
+    }
+    if (changed.deps.includes(id) && (other.day > changed.day || (other.day === changed.day && end(other) > changed.start))) {
+      addImpact(id, 1, `"${changed.name}" depends on "${other.name}", which now ends after "${changed.name}" begins.`, changedId);
+    }
+  }
+
+  // Levels 2 and 3: walk the dependency graph
+  let guard = 0;
+  while (queue.length && guard++ < 100) {
+    const id = queue.shift();
+    const current = levels.get(id);
+    if (current.level >= 3) continue;
+    const srcTask = after[id];
+    for (const childId of Object.keys(after)) {
+      if (childId === changedId) continue;
+      const child = after[childId];
+      if (!child.deps.includes(id)) continue;
+      const reason = `"${child.name}" waits on "${srcTask.name}", which is now delayed. "${child.name}" slides later as a result.`;
+      addImpact(childId, current.level + 1, reason, id);
+    }
+  }
+
+  // Capacity check with the proposed caps
+  for (const personId of Object.keys(PEOPLE)) {
+    const cap = caps[personId];
+    for (let day = 1; day <= 5; day++) {
+      const owned = Object.keys(after).filter(id => after[id].owner === personId && after[id].day === day);
+      const hours = owned.reduce((s, id) => s + after[id].duration, 0);
+      if (hours > cap) {
+        for (const id of owned) {
+          if (id === changedId) continue;
+          addImpact(id, 1, `${PEOPLE[personId].name} is over capacity on ${DAYS[day - 1]} (${hours}h planned, ${cap}h available).`, changedId);
+        }
+        if (!owned.includes(changedId) && !notes.some(n => n.includes("over capacity"))) {
+          notes.push(`${PEOPLE[personId].name} is over capacity on ${DAYS[day - 1]}.`);
+        }
+      }
+    }
+  }
+
+  const mitigations = buildMitigations(changedId, after, levels, caps);
+  return { before, after, changedId, type, value, caps, notes, levels, mitigations };
+}
+
+/* ==================================================================
+   MITIGATIONS
+   ================================================================== */
+
+function findFreeSlot(task, state, ignoreId, caps) {
+  for (let day = task.day; day <= 5; day++) {
+    for (let start = (day === task.day ? task.start : 8); start + task.duration <= 17; start += 0.5) {
+      const candidate = { ...task, day, start };
+      const clash = Object.keys(state).some(id => {
+        if (id === ignoreId) return false;
+        const o = state[id];
+        const sameOwner = task.owner && o.owner === task.owner;
+        const sameRoom = task.room && o.room === task.room;
+        return (sameOwner || sameRoom) && overlaps(candidate, o);
+      });
+      if (clash || !depsSatisfied(candidate, state)) continue;
+
+      const dayHours = Object.keys(state)
+        .filter(id => id !== ignoreId && state[id].owner === task.owner && state[id].day === day)
+        .reduce((s, id) => s + state[id].duration, 0);
+      const cap = caps[task.owner] ?? PEOPLE[task.owner].dailyCapacity;
+      if (dayHours + task.duration > cap) continue;
+
+      return { day, start };
+    }
+  }
+  return null;
+}
+
+function buildMitigations(changedId, after, levels, caps) {
+  const out = [];
+  const impacted = [...levels.keys()];
+
+  for (const id of impacted.filter(id => levels.get(id).level === 1)) {
+    const t = after[id];
+    const reason = levels.get(id).reason;
+    if (reason.includes("over capacity") || reason.includes("double-booked")) {
+      const slot = findFreeSlot(t, after, id, caps);
+      if (slot) {
+        out.push({
+          taskId: id,
+          text: `Move "${t.name}" from ${slotLabel(t)} to ${DAYS[slot.day - 1]} ${timeLabel(slot.start)} to ${timeLabel(slot.start + t.duration)}. This clears the conflict and keeps its owner within capacity.`,
+          slot
+        });
+      }
+    }
+  }
+
+  for (const id of impacted) {
+    const r = levels.get(id).reason;
+    if (!(r.includes("depends on") || r.includes("waits on"))) continue;
+    if (out.some(m => m.taskId === id)) continue;
+    const t = after[id];
+    const slot = findFreeSlot(t, after, id, caps);
+    if (slot) {
+      out.push({
+        taskId: id,
+        text: `Re-slot "${t.name}" to ${DAYS[slot.day - 1]} ${timeLabel(slot.start)} so it starts after its prerequisites finish, with no new conflicts.`,
+        slot
+      });
+    }
+  }
+
+  if (out.length === 0 && impacted.length > 0) {
+    out.push({
+      taskId: changedId,
+      text: `No clean reschedule was found. Consider keeping "${after[changedId].name}" in its original slot, or splitting it across two days.`,
+      slot: null
+    });
+  }
+  return out;
+}
+
+/* ==================================================================
+   RESULTS UI
+   ================================================================== */
+
+/* ==================================================================
+   BUSINESS: TEAM, APPROVALS, ACTIVITY, SHARING
+   Stored on this device, like the rest of the app.
+   ================================================================== */
+
+const ACT_KEY = "decisionImpact.activity";
+const PEND_KEY = "decisionImpact.pending";
+
+function readJSON(k, fallback) {
+  try {
+    const v = localStorage.getItem(k);
+    return v ? JSON.parse(v) : fallback;
+  } catch (e) { return fallback; }
+}
+function writeJSON(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ }
+}
+function esc(text) {
+  return String(text).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function canApprove() {
+  return !!account && account.mode === "business" && account.role === "manager";
+}
+function isMemberBusiness() {
+  return !!account && account.mode === "business" && account.role === "member";
+}
+
+function logActivity(text) {
+  const list = readJSON(ACT_KEY, []);
+  list.unshift({ t: new Date().toLocaleString(), who: account ? account.name : "Guest", text });
+  writeJSON(ACT_KEY, list.slice(0, 60));
+  renderActivity();
+}
+
+function renderActivity() {
+  const box = document.getElementById("activityBox");
+  if (!box) return;
+  const list = readJSON(ACT_KEY, []);
+  box.innerHTML = list.length
+    ? list.slice(0, 15).map(x => `<div class="act"><b>${esc(x.text)}</b><small>${esc(x.who)} · ${esc(x.t)}</small></div>`).join("")
+    : `<p class="empty">No changes yet.</p>`;
+}
+
+function renderApprovals() {
+  const box = document.getElementById("approvalBox");
+  if (!box) return;
+  const list = readJSON(PEND_KEY, []);
+  const mgr = canApprove();
+  box.innerHTML = list.length
+    ? list.map(p => `<div class="imp l1"><strong>${esc(p.title)}</strong>
+        <div class="why">Requested by ${esc(p.who)} · ${esc(p.t)}</div>
+        ${mgr
+          ? `<div class="btns2"><button class="small" data-approve="${esc(p.id)}">Approve</button><button class="small danger" data-reject="${esc(p.id)}">Reject</button></div>`
+          : `<div class="why">Waiting for a manager.</div>`}
+      </div>`).join("")
+    : `<p class="empty">No pending changes.</p>`;
+}
+
+function renderTeam() {
+  const box = document.getElementById("teamBox");
+  if (!box) return;
+  let html = "";
+  let overDays = 0;
+  for (const pid of Object.keys(PEOPLE)) {
+    const cap = PEOPLE[pid].dailyCapacity;
+    html += `<div class="team-row">
+      <div class="team-name" style="--c:${colorOf(pid)}"><i></i>${PEOPLE[pid].name}<small>${cap}h a day</small></div>
+      <div class="team-days">`;
+    for (let d = 1; d <= 5; d++) {
+      const load = dayLoad(pid, d);
+      const over = load > cap;
+      if (over) overDays++;
+      const pct = Math.min(100, (load / cap) * 100);
+      html += `<div class="tday ${over ? "over" : ""}" title="${DAYS[d - 1]}: ${load}h of ${cap}h">
+        <span style="height:${pct}%"></span><b>${DAYS[d - 1][0]}</b></div>`;
+    }
+    html += `</div></div>`;
+  }
+  html += `<p class="team-note">${overDays ? `${overDays} day${overDays === 1 ? " is" : "s are"} over capacity.` : "Everyone is within capacity this week."}</p>`;
+  box.innerHTML = html;
+}
+
+function renderBusiness() {
+  document.body.classList.toggle("business", !!account && account.mode === "business" && !account.guest);
+  renderTeam();
+  renderApprovals();
+  renderActivity();
+}
+
+function requestApproval(title, result, fix) {
+  const list = readJSON(PEND_KEY, []);
+  list.unshift({
+    id: randomHex(6),
+    who: account ? account.name : "Team member",
+    t: new Date().toLocaleString(),
+    title,
+    changedId: result.changedId,
+    type: result.type,
+    value: result.value,
+    fix: fix ? { taskId: fix.taskId, day: fix.slot.day, start: fix.slot.start } : null
+  });
+  writeJSON(PEND_KEY, list.slice(0, 30));
+  logActivity(`Requested: ${title}`);
+  renderApprovals();
+  document.getElementById("results").innerHTML =
+    `<div class="fix"><h3>Sent for approval</h3><div>A manager will review this change before it reaches the plan.</div></div>`;
+  addMsg("mochi", "Sent for approval. A manager can approve it in the Approvals panel.");
+}
+
+function approveProposal(id) {
+  const list = readJSON(PEND_KEY, []);
+  const p = list.find(x => x.id === id);
+  if (!p) return;
+  const r = analyze(p.changedId, p.type, p.value);
+  tasks = clone(r.after);
+  for (const k of Object.keys(PEOPLE)) PEOPLE[k].dailyCapacity = r.caps[k];
+  if (p.fix) {
+    tasks[p.fix.taskId].day = p.fix.day;
+    tasks[p.fix.taskId].start = p.fix.start;
+  }
+  writeJSON(PEND_KEY, list.filter(x => x.id !== id));
+  lastImpacts = null;
+  lastResult = null;
+  logActivity(`Approved: ${p.title}`);
+  refreshAll();
+  addMsg("mochi", `Approved: ${p.title}`);
+  Mochi.jump().then(() => Mochi.react(R.happy, 1200, "Approved!"));
+}
+
+async function shareSummary() {
+  const lines = [];
+  lines.push(`Plan summary${account && account.company ? " · " + account.company : ""}`);
+  for (const pid of Object.keys(PEOPLE)) {
+    for (let d = 1; d <= 5; d++) {
+      const l = dayLoad(pid, d);
+      const cap = PEOPLE[pid].dailyCapacity;
+      if (l) lines.push(`${PEOPLE[pid].name} ${DAYS[d - 1]}: ${l}h of ${cap}h${l > cap ? " (OVER)" : ""}`);
+    }
+  }
+  lines.push("", criticalText());
+  if (lastResult) lines.push("", summaryText(lastResult));
+  const text = lines.join("\n");
+
+  if (navigator.share) {
+    try { await navigator.share({ title: "Plan summary", text }); } catch (e) { /* cancelled */ }
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    addMsg("mochi", "Summary copied. You can paste it anywhere.");
+  } catch (e) {
+    addMsg("mochi", text);
+  }
+}
+
+function renderResults(result) {
+  const box = document.getElementById("results");
+  const { after, changedId, notes, levels, mitigations } = result;
+
+  const byLevel = { 1: [], 2: [], 3: [] };
+  for (const [id, info] of levels) byLevel[info.level].push(id);
+
+  const total = levels.size;
+  let html = `<div class="summary"><strong>${total} downstream impact${total === 1 ? "" : "s"} found.</strong>`;
+  html += notes.map(n => `<div>${n}</div>`).join("");
+  if (total === 0) html += `<div>No conflicts detected. The change fits the current plan.</div>`;
+  html += `</div>`;
+
+  for (const lvl of [1, 2, 3]) {
+    if (byLevel[lvl].length === 0) continue;
+    const label = lvl === 1 ? "direct" : lvl === 2 ? "second-order" : "third-order";
+    html += `<div class="lvl"><h3>Level ${lvl} · ${label}</h3>`;
+    for (const id of byLevel[lvl]) {
+      const info = levels.get(id);
+      const parent = info.parentId && after[info.parentId] ? after[info.parentId].name : after[changedId].name;
+      html += `<div class="imp l${lvl}"><strong>${after[id].name}</strong>
+        <span class="via">via ${parent}</span>
+        <div class="why">${info.reason}</div></div>`;
+    }
+    html += `</div>`;
+  }
+
+  const needsApproval = isMemberBusiness();
+  if (mitigations.length) {
+    html += `<div class="fix"><h3>Suggested fix</h3>`;
+    html += mitigations.map(m => `<div>${m.text}</div>`).join("");
+    html += `<div class="btns"><button id="applyBtn" class="primary">${needsApproval ? "Request approval" : "Apply fix to plan"}</button></div></div>`;
+  }
+
+  box.innerHTML = html;
+
+  const applyBtn = document.getElementById("applyBtn");
+  if (applyBtn) {
+    const fix = mitigations.find(x => x.slot) || null;
+    const title = `${after[changedId].name}: ${notes[0] || "change proposed"}`;
+    applyBtn.onclick = () => {
+      if (needsApproval) {
+        requestApproval(title, result, fix);
+        return;
+      }
+      Mochi.stopTour();
+      tasks = clone(after);
+      for (const k of Object.keys(PEOPLE)) PEOPLE[k].dailyCapacity = result.caps[k];
+      if (fix) {
+        tasks[fix.taskId].day = fix.slot.day;
+        tasks[fix.taskId].start = fix.slot.start;
+      }
+      lastImpacts = null;
+      lastResult = null;
+      logActivity(`Applied: ${title}`);
+      refreshAll();
+      box.innerHTML = `<div class="fix"><h3>Fix applied</h3>
+        <div>The change and the suggested reschedule are now in the plan. Run another change to test the next impact.</div></div>`;
+      addMsg("mochi", "Applied. The plan now includes the change and the fix.");
+      Mochi.jump().then(() => Mochi.react(R.happy, 1500, "Plan updated!"));
+    };
+  }
+}
+
+/* ==================================================================
+   MOCHI: AI NARRATION AND TOUR
+   ================================================================== */
+
+function summaryText(r) {
+  const n = r.levels.size;
+  if (n === 0) return `Clean result. Moving ${r.after[r.changedId].name} causes no conflicts in the current plan.`;
+
+  const counts = { 1: 0, 2: 0, 3: 0 };
+  for (const info of r.levels.values()) counts[info.level]++;
+  const first = [...r.levels.entries()].find(([, i]) => i.level === 1);
+  const concern = first ? first[1].reason : "";
+  const fix = r.mitigations.length ? r.mitigations[0].text : "I could not find a clean fix.";
+
+  return `${n} ripple${n === 1 ? "" : "s"}: ${counts[1]} direct, ${counts[2]} second-order, ${counts[3]} third-order.\n` +
+         `Biggest concern: ${concern}\n` +
+         `Suggested fix: ${fix}`;
+}
+
+async function tourStops(r, my) {
+  const ordered = [r.changedId];
+  for (const lvl of [1, 2, 3]) {
+    for (const [id, info] of r.levels) if (info.level === lvl) ordered.push(id);
+  }
+  for (const id of ordered.slice(0, 6)) {
+    if (my !== tourRun) return;
+    const t = r.after[id];
+    const isChange = id === r.changedId;
+    const label = isChange ? "Changed" : `Level ${r.levels.get(id).level}`;
+    await goTo(xForSlot(t));
+    if (my !== tourRun) return;
+    await Mochi.say(`${label}: ${t.name}`, 1700);
+  }
+  if (my === tourRun && r.mitigations.length) {
+    await Mochi.react(R.idea, 1800, "I have a fix");
+  }
+}
+
+function findTask(q) {
+  for (const id of Object.keys(tasks)) {
+    const name = tasks[id].name.toLowerCase();
+    if (q.includes(name)) return id;
+  }
+  for (const id of Object.keys(tasks)) {
+    const words = tasks[id].name.toLowerCase().split(" ").filter(w => w.length > 3);
+    if (words.some(w => q.includes(w))) return id;
+  }
+  return null;
+}
+
+function taskInfo(id, state = tasks) {
+  const t = state[id];
+  const who = PEOPLE[t.owner].name;
+  const load = dayLoad(t.owner, t.day, state);
+  const cap = PEOPLE[t.owner].dailyCapacity;
+  let s = `${t.name}: ${slotLabel(t)}, owned by ${who}${t.room ? `, in ${ROOMS[t.room].name}` : ""}.`;
+  s += `\n${who} has ${load}h that day, out of ${cap}h.`;
+  if (t.deps.length) s += `\nIt waits on: ${t.deps.map(d => state[d].name).join(", ")}.`;
+  const dependents = Object.values(state).filter(o => o.deps.includes(id)).map(o => o.name);
+  s += dependents.length ? `\nIt unlocks: ${dependents.join(", ")}.` : `\nNothing depends on it.`;
+  return s;
+}
+
+function loadText() {
+  const lines = [];
+  for (const pid of Object.keys(PEOPLE)) {
+    for (let d = 1; d <= 5; d++) {
+      const load = dayLoad(pid, d);
+      if (load === 0) continue;
+      const cap = PEOPLE[pid].dailyCapacity;
+      lines.push(`${PEOPLE[pid].name} on ${DAYS[d - 1]}: ${load}h of ${cap}h${load > cap ? "  (OVER)" : ""}`);
+    }
+  }
+  const over = lines.some(l => l.includes("OVER"));
+  return (over ? "Some people are overloaded:\n" : "Nobody is over capacity right now:\n") + lines.join("\n");
+}
+
+function criticalText() {
+  const all = Object.keys(tasks);
+  if (!all.length) return "No tasks yet. Add some to see the critical path.";
+  const latest = all.reduce((best, id) => {
+    const a = tasks[id], b = tasks[best];
+    return (a.day * 100 + end(a)) > (b.day * 100 + end(b)) ? id : best;
+  }, all[0]);
+  const chain = [latest];
+  let cur = latest;
+  while (tasks[cur].deps.length) {
+    const next = tasks[cur].deps.reduce((best, d) => {
+      const a = tasks[d], b = tasks[best];
+      return (a.day * 100 + end(a)) > (b.day * 100 + end(b)) ? d : best;
+    });
+    chain.unshift(next);
+    cur = next;
+  }
+  return `Longest chain: ${chain.map(id => tasks[id].name).join(" → ")}.\n` +
+         `It finishes ${slotLabel(tasks[latest])}. Any delay on these tasks pushes the release date.`;
+}
+
+function myText() {
+  if (!profile.person) return "Set who you are in your profile (the avatar at the top right) and I'll list your tasks.";
+  const mine = Object.keys(tasks).filter(id => tasks[id].owner === profile.person);
+  if (!mine.length) return `${PEOPLE[profile.person].name} has no tasks in this plan.`;
+  return `Your tasks, ${PEOPLE[profile.person].name}:\n` +
+         mine.map(id => `${tasks[id].name}: ${slotLabel(tasks[id])}`).join("\n");
+}
+
+function impactText(r) {
+  const lines = [];
+  for (const [id, info] of r.levels) {
+    lines.push(`L${info.level} ${r.after[id].name}: ${info.reason}`);
+  }
+  return lines.length ? `${lines.length} ripples from the last analysis:\n` + lines.join("\n")
+                      : "The last analysis found no ripples.";
+}
+
+function fixText() {
+  if (lastResult && lastResult.mitigations.length) {
+    return lastResult.mitigations.map(m => m.text).join("\n\n") + "\n\nPress Apply fix to commit it.";
+  }
+  return "Run an analysis first. I suggest fixes for the ripples it finds.";
+}
+
+const HELP =
+  "I can answer:\n" +
+  "• What's at risk? (ripples from the last analysis)\n" +
+  "• Suggest a fix\n" +
+  "• Who is overloaded?\n" +
+  "• What's the critical path?\n" +
+  "• My tasks\n" +
+  "• Explain the plan\n" +
+  "• Any task name (e.g. \"QA testing\")";
+
+function overviewText() {
+  const per = Object.keys(tasks).length;
+  return `The plan has ${per} tasks across ${DAYS.length} days, ${Object.keys(PEOPLE).length} people, and ${Object.keys(ROOMS).length} rooms.\n` +
+         loadText();
+}
+
+function mochiAnswer(raw) {
+  const q = raw.toLowerCase().trim();
+  if (!q) return "Ask me anything about the plan. Type help to see what I can do.";
+  if (/^(help|commands|what can you)/.test(q)) return HELP;
+  if (/\bmy (tasks|work|hours|schedule)\b/.test(q)) return myText();
+
+  const hit = findTask(q);
+  if (hit && !/risk|fix|suggest/.test(q)) return taskInfo(hit);
+  if (/risk|ripple|impact|affect/.test(q)) return lastResult ? impactText(lastResult) : "Propose a change and press Analyze. I'll list every ripple it causes.";
+  if (/fix|suggest|mitigat|solve|improve|better/.test(q)) return fixText();
+  if (/busy|overload|capacity|workload|who/.test(q)) return loadText();
+  if (/critical|longest|bottleneck|deadline/.test(q)) return criticalText();
+  if (/overview|explain|summary|plan|status/.test(q)) return overviewText();
+  return "I'm not sure about that yet. Type help to see what I can answer.";
+}
+
+/* ==================================================================
+   CHAT UI
+   ================================================================== */
+
+function addMsg(who, text) {
+  const log = document.getElementById("chatLog");
+  const div = document.createElement("div");
+  div.className = `msg ${who}`;
+  const tag = document.createElement("span");
+  tag.className = "who";
+  tag.textContent = who === "user" ? "You" : "Mochi";
+  div.appendChild(tag);
+  div.appendChild(document.createTextNode(text));
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  if (who === "mochi") {
+    lastMochiText = text;
+    if (settings.speak) tts.speak(text);
+  }
+}
+
+function askMochi(question) {
+  const q = question.trim();
+  if (!q) return;
+  addMsg("user", q);
+  const answer = mochiAnswer(q);
+  addMsg("mochi", answer);
+  const short = answer.split("\n")[0].slice(0, 60);
+  Mochi.say(short, 2500);
+}
+
+function renderChips() {
+  const chips = ["What's at risk?", "Suggest a fix", "Who is overloaded?", "Critical path", "My tasks", "help"];
+  const box = document.getElementById("chips");
+  box.innerHTML = "";
+  for (const c of chips) {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = c;
+    b.onclick = () => askMochi(c);
+    box.appendChild(b);
+  }
+}
+
+/* ==================================================================
+   SHEETS: PROFILE AND SETTINGS
+   ================================================================== */
+
+function openProfile() {
+  document.getElementById("pNameIn").value = profile.name;
+  document.getElementById("pRoleIn").value = profile.role;
+  const sel = document.getElementById("pPerson");
+  sel.innerHTML = `<option value="">Not in this plan</option>` +
+    Object.keys(PEOPLE).map(p => `<option value="${p}">${PEOPLE[p].name}</option>`).join("");
+  sel.value = profile.person;
+  renderProfile();
+  document.getElementById("profileBg").classList.add("open");
+}
+
+function closeProfile() {
+  document.getElementById("profileBg").classList.remove("open");
+}
+
+function syncSettingsUI() {
+  document.getElementById("setShowMochi").checked = settings.showMochi;
+  document.getElementById("setWander").checked = settings.wander;
+  document.getElementById("setFly").checked = settings.flyToTasks;
+  document.getElementById("setReduce").checked = settings.reduceMotion;
+  document.getElementById("setSpeak").checked = settings.speak;
+  document.getElementById("setDark").checked = !!settings.dark;
+  document.getElementById("setDayStart").value = String(settings.dayStart);
+  document.getElementById("setDayEnd").value = String(settings.dayEnd);
+  document.querySelectorAll("#setCatSize button").forEach(b => b.classList.toggle("on", b.dataset.v === settings.catSize));
+  document.querySelectorAll("#setView button").forEach(b => b.classList.toggle("on", b.dataset.v === settings.defaultView));
+}
+
+function openSettings() {
+  syncSettingsUI();
+  document.getElementById("settingsBg").classList.add("open");
+}
+
+function closeSettings() {
+  document.getElementById("settingsBg").classList.remove("open");
+}
+
+function applySettings() {
+  document.documentElement.style.setProperty("--cat-zoom", ZOOM[settings.catSize] || 1);
+  document.body.classList.toggle("dark", !!settings.dark);
+  Mochi.configure({ enabled: settings.showMochi, wander: settings.wander });
+  if (settings.catX !== null && settings.catY !== null) {
+    Mochi.placeHome(settings.catX, settings.catY);
+  }
+  FIRST_HOUR = Number(settings.dayStart);
+  LAST_HOUR = Number(settings.dayEnd);
+  document.getElementById("cal").classList.toggle("shake", false);
+  syncSettingsUI();
+  if (typeof refreshAll === "function" && typeof tasks !== "undefined") renderCalendar();
+}
+
+function setView(mode, silent = false) {
+  if (mode === "mine" && !profile.person) {
+    if (!silent) {
+      openProfile();
+      addMsg("mochi", "Pick who you are in the plan, then I can show just your tasks.");
+    }
+    mode = "all";
+  }
+  viewMode = mode;
+  document.getElementById("viewAll").classList.toggle("on", mode === "all");
+  document.getElementById("viewMine").classList.toggle("on", mode === "mine");
+  renderCalendar();
+}
+
+function resetPlan() {
+  Mochi.stopTour();
+  tourRun++;
+  tasks = {};
+  lastImpacts = null;
+  lastResult = null;
+  document.getElementById("results").innerHTML = `<p class="empty">All tasks cleared. Your team is kept.</p>`;
+  logActivity("Cleared all tasks");
+  refreshAll();
+  Mochi.react(R.happy, 1200, "Fresh start!");
+}
+
+/* ==================================================================
+   WIRING
+   ================================================================== */
+
+document.getElementById("changeType").onchange = renderValueFields;
+
+document.getElementById("cal").onclick = async e => {
+  const item = e.target.closest(".block");
+  if (!item) return;
+  const id = item.dataset.id;
+  Mochi.wake();
+  await goTo(xForSlot(tasks[id]));
+  Mochi.say(tasks[id].name, 1500);
+  addMsg("mochi", taskInfo(id));
+};
+
+document.getElementById("viewAll").onclick = () => setView("all");
+document.getElementById("viewMine").onclick = () => setView("mine");
+
+document.getElementById("profileBtn").onclick = openProfile;
+document.getElementById("pClose").onclick = closeProfile;
+document.getElementById("profileBg").onclick = e => { if (e.target.id === "profileBg") closeProfile(); };
+document.getElementById("pSave").onclick = () => {
+  profile.name = document.getElementById("pNameIn").value.trim();
+  profile.role = document.getElementById("pRoleIn").value.trim();
+  profile.person = document.getElementById("pPerson").value;
+  saveProfile();
+  closeProfile();
+  setView(viewMode, true);
+  renderProfile();
+  Mochi.react(R.happy, 1200, profile.name ? `Hi, ${profile.name}!` : "Profile saved");
+};
+
+document.getElementById("settingsBtn").onclick = openSettings;
+document.getElementById("sClose").onclick = closeSettings;
+document.getElementById("settingsBg").onclick = e => { if (e.target.id === "settingsBg") closeSettings(); };
+
+document.getElementById("setShowMochi").onchange = e => {
+  settings.showMochi = e.target.checked; saveSettings(); applySettings();
+};
+document.getElementById("setWander").onchange = e => {
+  settings.wander = e.target.checked; saveSettings(); applySettings();
+};
+document.getElementById("setFly").onchange = e => {
+  settings.flyToTasks = e.target.checked; saveSettings();
+};
+document.getElementById("setReduce").onchange = e => {
+  settings.reduceMotion = e.target.checked; saveSettings(); applySettings();
+};
+document.getElementById("setDayStart").onchange = e => {
+  settings.dayStart = Number(e.target.value); saveSettings(); applySettings();
+};
+document.getElementById("setDayEnd").onchange = e => {
+  settings.dayEnd = Number(e.target.value); saveSettings(); applySettings();
+};
+document.querySelectorAll("#setCatSize button").forEach(b => {
+  b.onclick = () => { settings.catSize = b.dataset.v; saveSettings(); applySettings(); };
+});
+document.querySelectorAll("#setView button").forEach(b => {
+  b.onclick = () => {
+    settings.defaultView = b.dataset.v; saveSettings();
+    setView(b.dataset.v, true);
+    syncSettingsUI();
+  };
+});
+document.getElementById("setCatReset").onclick = () => {
+  settings.catX = null;
+  settings.catY = null;
+  saveSettings();
+  Mochi.placeHome(Math.max(4, window.innerWidth - 150), 24);
+  Mochi.say("Back in the corner", 1500);
+};
+document.getElementById("setResetPlan").onclick = () => {
+  resetPlan();
+  closeSettings();
+};
+document.getElementById("setClearProfile").onclick = () => {
+  profile = { name: "", role: "", person: "" };
+  saveProfile();
+  setView("all", true);
+  renderProfile();
+  addMsg("mochi", "Profile cleared.");
+};
+
+document.getElementById("analyzeBtn").onclick = async () => {
+  const taskId = document.getElementById("taskSelect").value;
+  if (!tasks[taskId]) {
+    document.getElementById("results").innerHTML = `<p class="empty">Add a task first, then propose a change.</p>`;
+    return;
+  }
+  const type = document.getElementById("changeType").value;
+  let value = null;
+
+  if (type === "date") value = document.getElementById("newDay").value;
+  else if (type === "time") value = document.getElementById("newStart").value;
+  else if (type === "resource") value = document.getElementById("newOwner").value;
+  else if (type === "capacity") value = document.getElementById("newCap").value;
+
+  if (type === "time" && (value === "" || Number(value) < 8 || Number(value) > 16)) {
+    document.getElementById("results").innerHTML = `<p class="empty">Start hour must be between 8 and 16.</p>`;
+    Mochi.react(R.confused, 1800, "Hours must be 8 to 16");
+    return;
+  }
+  if (type === "capacity" && (value === "" || Number(value) < 1 || Number(value) > 12)) {
+    document.getElementById("results").innerHTML = `<p class="empty">Capacity must be between 1 and 12 hours.</p>`;
+    Mochi.react(R.confused, 1800, "Capacity must be 1 to 12");
+    return;
+  }
+
+  const result = analyze(taskId, type, value);
+  lastResult = result;
+  lastImpacts = { changedId: taskId, levels: result.levels };
+  renderCalendar();
+  renderResults(result);
+  renderProfile();
+  addMsg("mochi", summaryText(result));
+
+  const my = ++tourRun;
+  await Mochi.react(R.thinking, 900, "Tracing the ripples...");
+  if (my !== tourRun) return;
+
+  const n = result.levels.size;
+  if (n === 0) {
+    await Mochi.react(R.success, 1800, "All clear!");
+    return;
+  }
+  if (!settings.reduceMotion) {
+    const calEl = document.getElementById("cal");
+    calEl.classList.remove("shake");
+    void calEl.offsetWidth;
+    calEl.classList.add("shake");
+  }
+  await Mochi.react(R.warning, 1300, `${n} ripple${n === 1 ? "" : "s"} found!`);
+  if (my !== tourRun) return;
+  await tourStops(result, my);
+};
+
+document.getElementById("resetBtn").onclick = resetPlan;
+
+document.getElementById("chatSend").onclick = () => {
+  const input = document.getElementById("chatInput");
+  askMochi(input.value);
+  input.value = "";
+};
+document.getElementById("chatInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("chatSend").click();
+});
+
+["analyzeBtn", "resetBtn", "taskSelect", "changeType"].forEach(id => {
+  document.getElementById(id).addEventListener("pointerdown", () => Mochi.wake());
+});
+
+/* ==================================================================
+   START
+   ================================================================== */
+
+/* ==================================================================
+   ACCOUNTS (saved on this device)
+   Log in or create an account each time the app opens.
+   ================================================================== */
+
+/* ==================================================================
+   TEXT TO SPEECH (built into the browser, no API key needed)
+   ================================================================== */
+
+let lastMochiText = "";
+
+const tts = {
+  supported: "speechSynthesis" in window && "SpeechSynthesisUtterance" in window,
+  clean(text) {
+    return text.replace(/[•→←]/g, ",").replace(/\s+/g, " ").trim();
+  },
+  speak(text) {
+    if (!this.supported || !text) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(this.clean(text));
+    u.lang = "en-US";
+    u.rate = 1;
+    u.pitch = 1.05;
+    speechSynthesis.speak(u);
+  },
+  stop() {
+    if (this.supported) speechSynthesis.cancel();
+  },
+  toggleLast() {
+    if (!this.supported) return;
+    if (speechSynthesis.speaking) this.stop();
+    else this.speak(lastMochiText);
+  }
+};
+
+const ACCOUNTS_KEY = "decisionImpact.accounts";
+const LAST_EMAIL_KEY = "decisionImpact.lastEmail";
+let account = null;
+let gate = { mode: null, tab: "login", error: "", email: "" };
+
+function readAccounts() {
+  try { return JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || "{}"); } catch (e) { return {}; }
+}
+function writeAccounts(a) {
+  try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(a)); } catch (e) { /* ignore */ }
+}
+function readLastEmail() {
+  try { return localStorage.getItem(LAST_EMAIL_KEY) || ""; } catch (e) { return ""; }
+}
+function writeLastEmail(v) {
+  try { localStorage.setItem(LAST_EMAIL_KEY, v); } catch (e) { /* ignore */ }
+}
+
+function randomHex(n = 16) {
+  const a = new Uint8Array(n);
+  crypto.getRandomValues(a);
+  return [...a].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// SHA-256 when available. Otherwise a basic hash, which is weaker but still keeps the password out of plain text.
+async function hashPassword(pw, salt) {
+  const data = new TextEncoder().encode(salt + ":" + pw);
+  if (window.crypto && crypto.subtle) {
+    const buf = await crypto.subtle.digest("SHA-256", data);
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (const c of data) {
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, "0") + (h1 >>> 0).toString(16).padStart(8, "0");
+}
+
+function captureDraft() {
+  const e = document.getElementById("gEmail");
+  if (e) gate.email = e.value;
+}
+
+function gateError(msg) {
+  gate.error = msg;
+  const el = document.getElementById("gErr");
+  if (el) el.textContent = msg;
+}
+
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : "";
+}
+
+function renderGate() {
+  const card = document.getElementById("gateCard");
+  if (!gate.mode) {
+    card.innerHTML = `
+      <div class="gate-brand">Decision Impact</div>
+      <h2 class="gate-title">Who is this for?</h2>
+      <p class="gate-sub">Pick a plan type. You'll log in or create an account next.</p>
+      <button class="mode-card" data-mode="personal"><b>Personal</b><span>Plan your own tasks and spot conflicts early.</span></button>
+      <button class="mode-card" data-mode="business"><b>Business</b><span>Plan team work with shared people, rooms and capacity.</span></button>
+      <p class="gate-foot"><button class="link" data-act="guest">Continue as guest</button></p>`;
+    return;
+  }
+  const isBiz = gate.mode === "business";
+  const isLogin = gate.tab === "login";
+  card.innerHTML = `
+    <div class="gate-top">
+      <button class="small" data-act="back">← Back</button>
+      <span class="gate-brand">${isBiz ? "Business" : "Personal"}</span>
+    </div>
+    <div class="seg gate-tabs">
+      <button data-tab="login" class="${isLogin ? "on" : ""}">Log in</button>
+      <button data-tab="create" class="${isLogin ? "" : "on"}">Create account</button>
+    </div>
+    ${isLogin ? "" : `<label for="gName">Your name</label><input id="gName" type="text" maxlength="40" autocomplete="name">`}
+    ${!isLogin && isBiz ? `<label for="gCompany">Company</label><input id="gCompany" type="text" maxlength="60">` : ""}
+    ${!isLogin && isBiz ? `<label for="gRole">Your role</label><select id="gRole"><option value="manager">Manager (approves changes)</option><option value="member">Team member (requests changes)</option></select>` : ""}
+    <label for="gEmail">Email</label>
+    <input id="gEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none">
+    <label for="gPass">Password</label>
+    <input id="gPass" type="password" autocomplete="${isLogin ? "current-password" : "new-password"}">
+    ${isLogin ? "" : `<label for="gPass2">Confirm password</label><input id="gPass2" type="password" autocomplete="new-password">`}
+    <p class="gate-err" id="gErr">${gate.error}</p>
+    <div class="row-btns"><button class="primary" id="gSubmit">${isLogin ? "Log in" : "Create account"}</button></div>
+    <p class="gate-foot">${isLogin
+      ? `No account yet? <button class="link" data-tab="create">Create one</button>`
+      : `Already have an account? <button class="link" data-tab="login">Log in</button>`}</p>`;
+  document.getElementById("gEmail").value = gate.email;
+}
+
+function enterApp(welcome) {
+  document.getElementById("gate").style.display = "none";
+  showTab("home");
+  Mochi.setHidden(false);
+  renderHeader();
+  renderBusiness();
+  if (account && !profile.name) {
+    profile.name = account.name;
+    saveProfile();
+  }
+  renderProfile();
+  if (welcome && account) Mochi.react(R.happy, 1600, `Hi, ${account.name.split(" ")[0]}!`);
+}
+
+function renderHeader() {
+  if (!account) return;
+  const sub = document.getElementById("subtitle");
+  const acc = document.getElementById("acctLabel");
+  if (account.guest) {
+    sub.textContent = "Guest · Personal plan";
+    acc.textContent = "Guest (not saved to an account)";
+    return;
+  }
+  sub.textContent = account.mode === "business"
+    ? `${account.company} · Business plan`
+    : `Personal · ${account.name}`;
+  acc.textContent = account.email + (account.mode === "business" ? (account.role === "member" ? " · Team member" : " · Manager") : "");
+}
+
+function guestIn() {
+  account = { email: "", name: "Guest", mode: "personal", company: "", guest: true };
+  enterApp(true);
+}
+
+function showGate() {
+  account = null;
+  gate = { mode: null, tab: "login", error: "", email: readLastEmail() };
+  Mochi.setHidden(true);
+  document.getElementById("gate").style.display = "flex";
+  renderGate();
+}
+
+function signIn(email, rec) {
+  account = { email, name: rec.name, mode: rec.mode, company: rec.company || "", role: rec.role || "manager" };
+  writeLastEmail(email);
+  enterApp(true);
+}
+
+async function submitGate() {
+  const email = val("gEmail").trim().toLowerCase();
+  const pass = val("gPass");
+  gate.email = email;
+  if (!email.includes("@")) return gateError("Enter a valid email.");
+  if (pass.length < 6) return gateError("Password must be at least 6 characters.");
+
+  const accounts = readAccounts();
+
+  if (gate.tab === "create") {
+    const name = val("gName").trim();
+    const company = val("gCompany").trim();
+    if (!name) return gateError("Enter your name.");
+    if (gate.mode === "business" && !company) return gateError("Enter your company name.");
+    if (pass !== val("gPass2")) return gateError("Passwords don't match.");
+    if (accounts[email]) return gateError("An account with this email already exists. Log in instead.");
+
+    const salt = randomHex();
+    const role = gate.mode === "business" ? (val("gRole") || "manager") : "manager";
+    const rec = { name, mode: gate.mode, company, role, salt, hash: await hashPassword(pass, salt) };
+    accounts[email] = rec;
+    writeAccounts(accounts);
+    return signIn(email, rec);
+  }
+
+  const rec = accounts[email];
+  if (!rec) return gateError("No account with this email. Create one first.");
+  if (rec.mode !== gate.mode) {
+    return gateError(`This account is ${rec.mode === "business" ? "Business" : "Personal"}. Go back and choose that.`);
+  }
+  if (await hashPassword(pass, rec.salt) !== rec.hash) return gateError("Wrong password.");
+  return signIn(email, rec);
+}
+
+/* ==================================================================
+   START
+   ================================================================== */
+
+loadSettings();
+loadProfile();
+loadPlan();
+FIRST_HOUR = Number(settings.dayStart);
+LAST_HOUR = Number(settings.dayEnd);
+refreshAll();
+setView(settings.defaultView, true);
+renderChips();
+Mochi.init({
+  x: settings.catX,
+  y: settings.catY,
+  onPlaced: pos => {
+    settings.catX = pos.x;
+    settings.catY = pos.y;
+    saveSettings();
+  }
+});
+applySettings();
+
+document.getElementById("shareBtn").onclick = shareSummary;
+document.getElementById("printBtn").onclick = () => window.print();
+document.getElementById("approvalBox").onclick = e => {
+  const btn = e.target.closest("[data-approve],[data-reject]");
+  if (!btn) return;
+  if (btn.dataset.approve) {
+    approveProposal(btn.dataset.approve);
+  } else {
+    writeJSON(PEND_KEY, readJSON(PEND_KEY, []).filter(x => x.id !== btn.dataset.reject));
+    logActivity("Rejected a change request");
+    renderApprovals();
+  }
+};
+
+document.getElementById("addPersonBtn").onclick = addPerson;
+document.getElementById("addTaskBtn").onclick = addTask;
+document.getElementById("deleteTaskBtn").onclick = deleteSelectedTask;
+document.getElementById("peopleList").onclick = e => {
+  const b = e.target.closest("[data-remove]");
+  if (b) removePerson(b.dataset.remove);
+};
+document.getElementById("themeBtn").onclick = () => {
+  settings.dark = !settings.dark;
+  saveSettings();
+  applySettings();
+};
+document.getElementById("setDark").onchange = e => {
+  settings.dark = e.target.checked;
+  saveSettings();
+  applySettings();
+};
+document.getElementById("setDeleteAll").onclick = () => {
+  if (!confirm("Delete all team members and tasks on this device?")) return;
+  PEOPLE = {};
+  tasks = {};
+  profile.person = "";
+  saveProfile();
+  lastImpacts = null;
+  lastResult = null;
+  refreshAll();
+  closeSettings();
+};
+
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => showTab(t.dataset.tab);
+});
+document.getElementById("findInput").oninput = () => {
+  findSelected = null;
+  findRender();
+};
+document.getElementById("findResults").onclick = e => {
+  const f = e.target.closest("[data-find]");
+  if (f) return showPerson(f.dataset.find);
+  const c = e.target.closest("[data-cal]");
+  if (c) {
+    setView("person:" + c.dataset.cal, true);
+    showTab("calendar");
+    return;
+  }
+  if (e.target.closest("[data-back]")) {
+    findSelected = null;
+    findRender();
+  }
+};
+document.getElementById("meProfile").onclick = openProfile;
+document.getElementById("meSettings").onclick = openSettings;
+document.getElementById("meSwitch").onclick = () => {
+  closeSettings();
+  showGate();
+};
+
+const gateCard = document.getElementById("gateCard");
+gateCard.onclick = e => {
+  const t = e.target.closest("[data-mode],[data-tab],[data-act],#gSubmit");
+  if (!t) return;
+  if (t.id === "gSubmit") return submitGate();
+  if (t.dataset.act === "guest") return guestIn();
+  captureDraft();
+  if (t.dataset.mode) {
+    gate.mode = t.dataset.mode;
+    gate.tab = "login";
+  } else if (t.dataset.tab) {
+    gate.tab = t.dataset.tab;
+  } else if (t.dataset.act === "back") {
+    gate.mode = null;
+  }
+  gate.error = "";
+  renderGate();
+};
+gateCard.onkeydown = e => {
+  if (e.key === "Enter" && e.target.tagName === "INPUT") submitGate();
+};
+
+const readBtn = document.getElementById("readBtn");
+readBtn.onclick = () => tts.toggleLast();
+const setSpeakEl = document.getElementById("setSpeak");
+if (!tts.supported) {
+  readBtn.disabled = true;
+  readBtn.textContent = "Voice not supported";
+  setSpeakEl.disabled = true;
+} else {
+  setSpeakEl.onchange = e => {
+    settings.speak = e.target.checked;
+    saveSettings();
+    if (!e.target.checked) tts.stop();
+  };
+}
+
+document.getElementById("setLogout").onclick = () => {
+  closeSettings();
+  showGate();
+};
+
+showGate();
+</script>
+</body>
+</html>
